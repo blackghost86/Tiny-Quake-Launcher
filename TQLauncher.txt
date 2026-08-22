@@ -17,7 +17,7 @@ Run the program. Select source port, episode, map and play.
 
 Prerequisites
 ----------------------------------------------------------------------
-Install .net 10.0 Desktop Runtime.
+Install .NET 10.0 Desktop Runtime (only if needed).
 
 Changelog
 ----------------------------------------------------------------------
