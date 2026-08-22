@@ -1,0 +1,25 @@
+Tiny Quake Launcher
+---------------------------------------------------------------------
+A simple launcher for Quake and its mission packs.
+
+Features
+------------------------------------------------------------
+- Runs Quake from your desktop or Quake folder (needs Quake game path).
+- Simple and easy to use if you have no idea how to setup Quake.
+- Detects add-ons/maps in custom folders and .pak files.
+
+Installation
+---------------------------------------------------------------------
+Extract TQLauncher.exe on your desktop or into your Quake directory.
+
+Prerequisites
+---------------------------------------------------------------------
+.net 10.0 Desktop Runtime (https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.11/windowsdesktop-runtime-10.0.11-win-x64.exe). 
+
+Changelog
+---------------------------------------------------------------------
+0.2:
+- First public release with support for Quake and its mission packs.
+- Added support for Arcane Dimensions, Honey and Capture The Flag.
+- Added support for the latest episode: Dawn of the Machine.
+- Fixed a few typos, error messages and color codes.
