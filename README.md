@@ -12,4 +12,4 @@ A simple launcher for Quake and its mission packs.
 Extract TQLauncher.exe on your desktop or into your Quake directory.
 
 # Prerequisites
-Install [.NET 10.0 Desktop Runtime (win-x64.exe).](https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.11/windowsdesktop-runtime-10.0.11-win-x64.exe)
+Install [.NET 10.0 Desktop Runtime.](https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.11/windowsdesktop-runtime-10.0.11-win-x64.exe)
