@@ -1,10 +1,10 @@
 ﻿namespace TinyQuakeLauncher.Models;
 
-public class Engine
+public class MissionPack
 {
     public string Name { get; set; } = "";
 
-    public string ExecutablePath { get; set; } = "";
+    public string GameDirectory { get; set; } = "";
 
     public override string ToString()
     {
