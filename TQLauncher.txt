@@ -8,6 +8,8 @@ Features
 - Automatic Quake source port detection.
 - Automatic episode detection.
 - Automatic map detection (from PAK files or custom folders).
+- Automatic map title for any selected map.
+- Difficulty settings for any map.
 - Command line preview based on custom selection.
 
 Installation
@@ -20,9 +22,15 @@ Prerequisites
 Install .NET 10.0 Desktop Runtime (only if needed).
 
 Changelog
-----------------------------------------------------------------------
+---------------------------------------------------------------------
+0.3:
+- Improved detection for custom folders and maps.
+- Improved launcher theme, buttons and fonts.
+- Added an icon to the Browse folder.
+- Added difficulty settings and map titles.
+
 0.2:
 - First public release with support for Quake and its mission packs.
 - Added support for Arcane Dimensions, Honey and Capture The Flag.
 - Added support for the latest episode: Dawn of the Machine.
-- Fixed a few typos, error messages and code cleanup.
+- Fixed a few typos, error messages and color codes.
