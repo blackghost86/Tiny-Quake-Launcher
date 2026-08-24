@@ -9,6 +9,10 @@ A simple launcher for Quake and its mission packs.
 - Difficulty settings for any map.
 - Command line preview based on custom selection.
 
+# Features planned
+- Quake II support and its mission packs.
+- Multiplayer support for both games.
+
 # Installation
 Extract TQLauncher.exe on your desktop or into your Quake directory.
 
