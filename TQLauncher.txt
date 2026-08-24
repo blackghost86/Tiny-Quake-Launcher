@@ -9,7 +9,6 @@ Features
 - Automatic episode detection.
 - Automatic map detection (from PAK files or custom folders).
 - Automatic map title for any selected map.
-- Difficulty settings for any map.
 - Command line preview based on custom selection.
 
 Installation
@@ -19,7 +18,7 @@ Run the program. Select source port, episode, map and play.
 
 Prerequisites
 ----------------------------------------------------------------------
-Install .NET 10.0 Desktop Runtime (only if needed).
+Install .NET 10.0 Desktop Runtime only if needed.
 
 Changelog
 ---------------------------------------------------------------------
