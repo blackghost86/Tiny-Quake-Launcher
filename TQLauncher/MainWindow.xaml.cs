@@ -19,6 +19,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        SetupDifficultyOptions();
+
         UpdateCommandArguments();
     }
 
@@ -28,7 +30,7 @@ public partial class MainWindow : Window
             new System.Windows.Forms.FolderBrowserDialog();
 
         dialog.Description =
-            "Select your Quake installation folder";
+            "";
 
         if (dialog.ShowDialog() ==
             System.Windows.Forms.DialogResult.OK)
@@ -38,6 +40,9 @@ public partial class MainWindow : Window
 
             DetectQuakeInstallation(
                 dialog.SelectedPath);
+
+            // Default difficulty is set to Normal.
+            DifficultyComboBox.SelectedIndex = 1;
         }
     }
 
@@ -85,16 +90,57 @@ public partial class MainWindow : Window
             MissionComboBox.SelectedIndex = 0;
 
             StatusText.Text =
-                $"Status: Found {EngineComboBox.Items.Count} engine(s) and " +
+                $"Found {EngineComboBox.Items.Count} engine(s) and " +
                 $"{MissionComboBox.Items.Count} game(s).";
         }
         else
         {
             StatusText.Text =
-                "Status: No Quake game directories found.";
+                "No Quake game directories found.";
         }
 
         DetectMaps();
+    }
+
+    private string GetEpisodeFolder(MissionPack missionPack)
+    {
+        string quakeFolder =
+            QuakeFolderTextBox.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(quakeFolder))
+        {
+            return "";
+        }
+
+        string gameDirectory =
+            missionPack.GameDirectory?.Trim() ?? "";
+
+        // Vanilla Quake.
+        if (string.IsNullOrWhiteSpace(gameDirectory))
+        {
+            string id1Folder =
+                Path.Combine(
+                    quakeFolder,
+                    "id1");
+
+            if (Directory.Exists(id1Folder))
+            {
+                return id1Folder;
+            }
+
+            return quakeFolder;
+        }
+
+        // Some detectors may return an absolute path.
+        if (Path.IsPathRooted(gameDirectory))
+        {
+            return gameDirectory;
+        }
+
+        // Normal mission pack directory.
+        return Path.Combine(
+            quakeFolder,
+            gameDirectory);
     }
 
     private void DetectMaps()
@@ -110,48 +156,49 @@ public partial class MainWindow : Window
             return;
         }
 
-        string quakeFolder =
-            QuakeFolderTextBox.Text.Trim();
+        string gameFolder =
+            GetEpisodeFolder(missionPack);
 
-        if (!Directory.Exists(quakeFolder))
+        if (string.IsNullOrWhiteSpace(gameFolder))
         {
             UpdateCommandArguments();
             return;
         }
 
-        string gameFolder =
-            Path.Combine(
-                quakeFolder,
-                missionPack.GameDirectory);
+        if (!Directory.Exists(gameFolder))
+        {
+            StatusText.Text =
+                $"Episode folder not found:\n{gameFolder}";
 
-        List<string> maps =
+            UpdateCommandArguments();
+            return;
+        }
+
+        // Detect maps from the selected episode folder.
+        List<MapInfo> maps =
             pakMapDetector.DetectMaps(gameFolder);
 
-        foreach (string map in maps)
+        foreach (MapInfo map in maps)
         {
             MapComboBox.Items.Add(map);
         }
 
-        if (MapComboBox.Items.Count > 0)
-        {
-            // Prefer start.bsp when it exists.
-            int startMapIndex =
-                maps.FindIndex(
-                    map => string.Equals(
-                        map,
-                        "start.bsp",
-                        StringComparison.OrdinalIgnoreCase));
+        // Prefer start.bsp.
+        int startIndex =
+            maps.FindIndex(
+                map => string.Equals(
+                    map.FileName,
+                    "start.bsp",
+                    StringComparison.OrdinalIgnoreCase));
 
-            if (startMapIndex >= 0)
-            {
-                MapComboBox.SelectedIndex =
-                    startMapIndex;
-            }
-            else
-            {
-                // Otherwise select the first map.
-                MapComboBox.SelectedIndex = 0;
-            }
+        if (startIndex >= 0)
+        {
+            MapComboBox.SelectedIndex =
+                startIndex;
+        }
+        else if (MapComboBox.Items.Count > 0)
+        {
+            MapComboBox.SelectedIndex = 0;
         }
 
         UpdateCommandArguments();
@@ -169,11 +216,29 @@ public partial class MainWindow : Window
         SelectionChangedEventArgs e)
     {
         DetectMaps();
-
-        UpdateCommandArguments();
     }
 
     private void MapComboBox_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        UpdateCommandArguments();
+    }
+
+    private void SetupDifficultyOptions()
+    {
+        DifficultyComboBox.Items.Clear();
+
+        DifficultyComboBox.Items.Add("Easy");
+        DifficultyComboBox.Items.Add("Normal");
+        DifficultyComboBox.Items.Add("Hard");
+        DifficultyComboBox.Items.Add("Nightmare");
+
+        // Don't select anything until a Quake folder is selected.
+        DifficultyComboBox.SelectedIndex = -1;
+    }
+
+    private void DifficultyComboBox_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
     {
@@ -188,8 +253,17 @@ public partial class MainWindow : Window
         MissionPack? missionPack =
             MissionComboBox.SelectedItem as MissionPack;
 
-        string? map =
-            MapComboBox.SelectedItem as string;
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
+        string? mapName = null;
+
+        if (selectedMap != null)
+        {
+            mapName =
+                Path.GetFileNameWithoutExtension(
+                    selectedMap.FileName);
+        }
 
         if (engine == null)
         {
@@ -199,25 +273,54 @@ public partial class MainWindow : Window
 
         List<string> arguments = new();
 
+        // Episode
         if (missionPack != null &&
             !string.IsNullOrWhiteSpace(
                 missionPack.GameDirectory))
         {
             arguments.Add(
-                $"-game {missionPack.GameDirectory}");
+                "-game " + missionPack.GameDirectory);
         }
 
-        if (!string.IsNullOrWhiteSpace(map))
+        // Difficulty
+        if (DifficultyComboBox.SelectedItem is string difficulty)
+        {
+            int skill = 1;
+
+            if (difficulty == "Easy")
+            {
+                skill = 0;
+            }
+            else if (difficulty == "Normal")
+            {
+                skill = 1;
+            }
+            else if (difficulty == "Hard")
+            {
+                skill = 2;
+            }
+            else if (difficulty == "Nightmare")
+            {
+                skill = 3;
+            }
+
+            arguments.Add(
+                "+skill " + skill);
+        }
+
+        // Map
+        if (!string.IsNullOrWhiteSpace(mapName))
         {
             arguments.Add(
-                $"+map {map}");
+                "+map " + mapName);
         }
 
         string argumentString =
             string.Join(" ", arguments);
 
         CommandArgumentsTextBox.Text =
-            $"{Path.GetFileName(engine.ExecutablePath)} " +
+            Path.GetFileName(engine.ExecutablePath) +
+            " " +
             argumentString;
     }
 
@@ -236,8 +339,17 @@ public partial class MainWindow : Window
         MissionPack? missionPack =
             MissionComboBox.SelectedItem as MissionPack;
 
-        string? map =
-            MapComboBox.SelectedItem as string;
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
+        string? mapName = null;
+
+        if (selectedMap != null)
+        {
+            mapName =
+                Path.GetFileNameWithoutExtension(
+                    selectedMap.FileName);
+        }
 
         string quakeFolder =
             QuakeFolderTextBox.Text.Trim();
@@ -245,10 +357,10 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(quakeFolder))
         {
             StatusText.Text =
-                "Status: Please select your Quake folder.";
+                "Please select your Quake folder.";
 
             System.Windows.MessageBox.Show(
-                "Please select your Quake installation folder first.",
+                "Please select your Quake folder first.",
                 "Tiny Quake Launcher",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -259,7 +371,7 @@ public partial class MainWindow : Window
         if (!Directory.Exists(quakeFolder))
         {
             StatusText.Text =
-                "Status: Quake folder not found.";
+                "Quake folder not found.";
 
             System.Windows.MessageBox.Show(
                 "The selected Quake folder could not be found.\n\n" +
@@ -274,10 +386,10 @@ public partial class MainWindow : Window
         if (engine == null)
         {
             StatusText.Text =
-                "Status: Please select an engine.";
+                "Please select an engine.";
 
             System.Windows.MessageBox.Show(
-                "Please select a Quake engine before launching.",
+                "Please select an engine before launching.",
                 "Tiny Quake Launcher",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -288,10 +400,10 @@ public partial class MainWindow : Window
         if (!File.Exists(engine.ExecutablePath))
         {
             StatusText.Text =
-                "Status: Engine executable not found.";
+                "Engine executable not found.";
 
             System.Windows.MessageBox.Show(
-                "The selected Quake engine executable could not be found.\n\n" +
+                "The selected Quake engine could not be found.\n\n" +
                 $"Executable:\n{engine.ExecutablePath}\n\n" +
                 "Try selecting the Quake folder again.",
                 "Tiny Quake Launcher",
@@ -303,22 +415,56 @@ public partial class MainWindow : Window
 
         List<string> arguments = new();
 
+        // -----------------------------------------
+        // Episode
+        // -----------------------------------------
+
         if (missionPack != null &&
             !string.IsNullOrWhiteSpace(
                 missionPack.GameDirectory))
         {
-            arguments.Add(
-                $"-game {missionPack.GameDirectory}");
+            arguments.Add("-game");
+            arguments.Add(missionPack.GameDirectory);
         }
 
-        if (!string.IsNullOrWhiteSpace(map))
+        // -----------------------------------------
+        // Difficulty
+        // -----------------------------------------
+
+        if (DifficultyComboBox.SelectedItem is string difficulty)
         {
-            arguments.Add(
-                $"+map {map}");
+            int skill = 1;
+
+            if (difficulty == "Easy")
+            {
+                skill = 0;
+            }
+            else if (difficulty == "Normal")
+            {
+                skill = 1;
+            }
+            else if (difficulty == "Hard")
+            {
+                skill = 2;
+            }
+            else if (difficulty == "Nightmare")
+            {
+                skill = 3;
+            }
+
+            arguments.Add("+skill");
+            arguments.Add(skill.ToString());
         }
 
-        string argumentString =
-            string.Join(" ", arguments);
+        // -----------------------------------------
+        // Map
+        // -----------------------------------------
+
+        if (!string.IsNullOrWhiteSpace(mapName))
+        {
+            arguments.Add("+map");
+            arguments.Add(mapName);
+        }
 
         try
         {
@@ -326,20 +472,24 @@ public partial class MainWindow : Window
                 new ProcessStartInfo
                 {
                     FileName = engine.ExecutablePath,
-                    Arguments = argumentString,
                     WorkingDirectory = quakeFolder,
                     UseShellExecute = true
                 };
 
+            foreach (string argument in arguments)
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
             Process.Start(startInfo);
 
             StatusText.Text =
-                $"Status: Started {engine.Name} with custom settings.";
+                $"Running {engine.Name} with custom settings.";
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
             StatusText.Text =
-                "Status: Could not start the engine.";
+                "Could not start the engine.";
 
             System.Windows.MessageBox.Show(
                 "Tiny Quake Launcher could not start the selected engine.\n\n" +
@@ -352,7 +502,7 @@ public partial class MainWindow : Window
         catch (System.Exception ex)
         {
             StatusText.Text =
-                "Status: An unexpected error occurred.";
+                "An unexpected error occurred.";
 
             System.Windows.MessageBox.Show(
                 "An unexpected error occurred while starting Quake.\n\n" +
