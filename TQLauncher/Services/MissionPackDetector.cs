@@ -5,85 +5,189 @@ namespace TinyQuakeLauncher.Services;
 
 public class MissionPackDetector
 {
-    private readonly List<MissionPack> knownMissionPacks =
+    private readonly List<MissionPack> allMissionPacks =
         new()
         {
             new MissionPack
             {
-                Name = "Vanilla Quake",
-                GameDirectory = "id1"
+                Name = "Quake",
+                PossibleDirectories = new List<string>
+                {
+                    "id1"
+                }
             },
 
             new MissionPack
             {
                 Name = "Scourge of Armagon",
-                GameDirectory = "hipnotic"
+                PossibleDirectories = new List<string>
+                {
+                    "hipnotic"
+                }
             },
 
             new MissionPack
             {
                 Name = "Dissolution of Eternity",
-                GameDirectory = "rogue"
-            },
-
-            new MissionPack
-            {
-                Name = "Arcane Dimensions",
-                GameDirectory = "ad"
-            },
-
-            new MissionPack
-            {
-                Name = "Capture the Flag",
-                GameDirectory = "ctf"
-            },
-
-            new MissionPack
-            {
-                Name = "Honey",
-                GameDirectory = "honey"
+                PossibleDirectories = new List<string>
+                {
+                    "rogue"
+                }
             },
 
             new MissionPack
             {
                 Name = "Dimension of the Past",
-                GameDirectory = "dopa"
+                PossibleDirectories = new List<string>
+                {
+                    "dopa"
+                }
             },
 
             new MissionPack
             {
                 Name = "Dimension of the Machine",
-                GameDirectory = "mg1"
+                PossibleDirectories = new List<string>
+                {
+                    "mg1"
+                }
             },
 
             new MissionPack
             {
                 Name = "Dawn of the Machine",
-                GameDirectory = "mg3"
+                PossibleDirectories = new List<string>
+                {
+                    "mg3"
+                }
             }
         };
 
-    public List<MissionPack> DetectMissionPacks(string quakeFolder)
+    public List<MissionPack> DetectMissionPacks(
+        string quakeFolder)
     {
-        List<MissionPack> installedPacks = new();
+        List<MissionPack> detected =
+            new();
 
         if (!Directory.Exists(quakeFolder))
         {
-            return installedPacks;
+            return detected;
         }
 
-        foreach (MissionPack missionPack in knownMissionPacks)
-        {
-            string gamePath = Path.Combine(
-                quakeFolder,
-                missionPack.GameDirectory);
+        // ---------------------------------------------
+        // 1. Detect known Quake episodes.
+        // ---------------------------------------------
 
-            if (Directory.Exists(gamePath))
+        foreach (MissionPack missionPack in allMissionPacks)
+        {
+            missionPack.DetectedDirectory = null;
+
+            if (missionPack.TryDetectDirectory(quakeFolder))
             {
-                installedPacks.Add(missionPack);
+                detected.Add(missionPack);
             }
         }
 
-        return installedPacks;
+        // ---------------------------------------------
+        // 2. Detect unknown Quake episodes.
+        // ---------------------------------------------
+
+        HashSet<string> knownDirectories =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (MissionPack missionPack in detected)
+        {
+            if (!string.IsNullOrWhiteSpace(
+                missionPack.DetectedDirectory))
+            {
+                knownDirectories.Add(
+                    missionPack.DetectedDirectory);
+            }
+        }
+
+        string[] directories =
+            Directory.GetDirectories(
+                quakeFolder,
+                "*",
+                SearchOption.TopDirectoryOnly);
+
+        foreach (string directory in directories)
+        {
+            string folderName =
+                Path.GetFileName(
+                    directory.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar));
+
+            if (string.IsNullOrWhiteSpace(folderName))
+            {
+                continue;
+            }
+
+            // Don't add known episode folders.
+            if (knownDirectories.Contains(folderName))
+            {
+                continue;
+            }
+
+            // id1 is the Vanilla Quake game directory.
+            if (string.Equals(
+                folderName,
+                "id1",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!ContainsQuakeContent(directory))
+            {
+                continue;
+            }
+
+            detected.Add(
+                new MissionPack
+                {
+                    Name = folderName,
+                    PossibleDirectories = new List<string>
+                    {
+                        folderName
+                    },
+                    DetectedDirectory = folderName
+                });
+        }
+
+        return detected;
+    }
+
+    private bool ContainsQuakeContent(
+        string folder)
+    {
+        // Check for PAK files directly in the folder.
+        if (Directory.GetFiles(
+            folder,
+            "*.pak",
+            SearchOption.TopDirectoryOnly).Length > 0)
+        {
+            return true;
+        }
+
+        // Check for loose BSP maps.
+        string mapsFolder =
+            Path.Combine(
+                folder,
+                "maps");
+
+        if (Directory.Exists(mapsFolder))
+        {
+            if (Directory.GetFiles(
+                mapsFolder,
+                "*.bsp",
+                SearchOption.TopDirectoryOnly).Length > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
