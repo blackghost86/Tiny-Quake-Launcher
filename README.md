@@ -10,8 +10,10 @@ A simple launcher for Quake and its mission packs.
 - Command line preview based on custom selection.
 
 # Features planned
-- Quake II support and its mission packs.
-- Multiplayer support for both games.
+- Quake: Dawn of the Machine (2026) support - DONE
+- Quake II support and its mission packs - IN PROGRESS
+- Multiplayer support for both games - NOT STARTED
+- Support for other games? - NOT STARTED
 
 # Installation
 Extract TQLauncher.exe on your desktop or into your Quake directory.
