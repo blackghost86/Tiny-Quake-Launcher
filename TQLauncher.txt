@@ -10,11 +10,14 @@ Features
 - Automatic map detection from pak files or custom folders.
 - Difficulty settings for any existing map.
 - Command line preview based on custom selection.
+- Extra arguments that can be added manually.
 
 Features planned
 ----------------------------------------------------------------------
-- Quake II support and its mission packs.
-- Multiplayer support for both games.
+- Quake: Dawn of the Machine (2026) support - DONE (v0.2)
+- Quake II support and its mission packs - IN PROGRESS
+- Multiplayer support for both games - NOT STARTED
+- Support for other games? - NOT STARTED
 
 Installation
 ----------------------------------------------------------------------
@@ -23,10 +26,14 @@ Run the program. Select source port, episode, map and play.
 
 Prerequisites
 ----------------------------------------------------------------------
-Install .NET 10.0 Desktop Runtime, but only if needed.
+Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 ---------------------------------------------------------------------
+0.6:
+- Added a few more engine source ports to the list.
+- Fixed some typos and improved launcher theme.
+
 0.5:
 - Added a second command line box to insert extra arguments.
 - Added a button to erase the manual/extra arguments.
