@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using TinyQuakeLauncher.Models;
 
@@ -12,6 +13,10 @@ public class PakMapDetector
     private const int PakDirectoryEntrySize = 64;
     private const int QuakeBspHeaderSize = 124;
     private const int QuakeBspVersion = 29;
+    private const int QuakeBsp2Version2Psb =
+        ('B' << 24) | ('S' << 16) | ('P' << 8) | '2';
+    private const int QuakeBsp2VersionBsp2 =
+        ('B' << 0) | ('S' << 8) | ('P' << 16) | ('2' << 24);
 
     public List<MapInfo> DetectMaps(string gameFolder)
     {
@@ -30,10 +35,6 @@ public class PakMapDetector
         HashSet<string> foundMaps =
             new(StringComparer.OrdinalIgnoreCase);
 
-        // -----------------------------------------------------
-        // PAK files
-        // -----------------------------------------------------
-
         foreach (string pakFile in FindPakFiles(gameFolder))
         {
             ReadPakMaps(
@@ -42,23 +43,15 @@ public class PakMapDetector
                 foundMaps);
         }
 
-        // -----------------------------------------------------
-        // Loose BSP files
-        // -----------------------------------------------------
-
         AddLooseBspFiles(
             gameFolder,
             maps,
             foundMaps);
 
-        // -----------------------------------------------------
-        // Sort
-        // -----------------------------------------------------
-
         return maps
             .OrderBy(
                 map => map.FileName,
-                StringComparer.OrdinalIgnoreCase)
+                new NaturalMapNameComparer())
             .ToList();
     }
 
@@ -171,10 +164,6 @@ public class PakMapDetector
                 directoryLength /
                 PakDirectoryEntrySize;
 
-            // -------------------------------------------------
-            // Go to file table.
-            // -------------------------------------------------
-
             stream.Position =
                 directoryOffset;
 
@@ -209,11 +198,9 @@ public class PakMapDetector
                         '/');
 
                 // -------------------------------------------------
-                // The reference launcher considers maps to be:
+                // A map is specifically:
                 //
                 // maps/<name>.bsp
-                //
-                // Do the same here.
                 // -------------------------------------------------
 
                 if (!IsMapEntry(entryName))
@@ -244,10 +231,10 @@ public class PakMapDetector
                 }
 
                 // -------------------------------------------------
-                // Try to read the BSP worldspawn message.
+                // Read BSP title.
                 //
-                // If that fails, the map is still valid and the
-                // filename will be used as its title.
+                // If the title cannot be read, the map is still
+                // valid and the filename is used.
                 // -------------------------------------------------
 
                 string title = "";
@@ -431,6 +418,10 @@ public class PakMapDetector
                 return;
             }
 
+            // -------------------------------------------------
+            // Avoid duplicate map names.
+            // -------------------------------------------------
+
             if (!foundMaps.Add(fileName))
             {
                 return;
@@ -548,13 +539,15 @@ public class PakMapDetector
                     true);
 
             // -------------------------------------------------
-            // BSP version
+            // Quake 1 BSP version
             // -------------------------------------------------
 
             int version =
                 reader.ReadInt32();
 
-            if (version != QuakeBspVersion)
+            if (version != QuakeBspVersion &&
+                version != QuakeBsp2Version2Psb &&
+                version != QuakeBsp2VersionBsp2)
             {
                 return "";
             }
@@ -595,12 +588,8 @@ public class PakMapDetector
                 return "";
             }
 
-            string entities =
-                Encoding.ASCII.GetString(
-                    entityData);
-
             return ExtractMapTitle(
-                entities);
+                entityData);
         }
         catch
         {
@@ -624,15 +613,16 @@ public class PakMapDetector
     // =========================================================
 
     private string ExtractMapTitle(
-        string entities)
+        byte[] entityData)
     {
         int position = 0;
 
-        while (true)
+        while (position < entityData.Length)
         {
             int entityStart =
-                entities.IndexOf(
-                    '{',
+                FindByte(
+                    entityData,
+                    (byte)'{',
                     position);
 
             if (entityStart < 0)
@@ -641,8 +631,9 @@ public class PakMapDetector
             }
 
             int entityEnd =
-                entities.IndexOf(
-                    '}',
+                FindByte(
+                    entityData,
+                    (byte)'}',
                     entityStart + 1);
 
             if (entityEnd < 0)
@@ -650,16 +641,15 @@ public class PakMapDetector
                 return "";
             }
 
-            string entity =
-                entities.Substring(
-                    entityStart,
-                    entityEnd -
-                    entityStart +
-                    1);
+            // -------------------------------------------------
+            // Check for worldspawn.
+            // -------------------------------------------------
 
             string classname =
                 ExtractEntityValue(
-                    entity,
+                    entityData,
+                    entityStart,
+                    entityEnd,
                     "classname");
 
             if (string.Equals(
@@ -667,32 +657,38 @@ public class PakMapDetector
                 "worldspawn",
                 StringComparison.OrdinalIgnoreCase))
             {
-                string message =
-                    ExtractEntityValue(
-                        entity,
+                // -------------------------------------------------
+                // Normal Quake map title.
+                // -------------------------------------------------
+
+                string title =
+                    ExtractEncodedEntityValue(
+                        entityData,
+                        entityStart,
+                        entityEnd,
                         "message");
 
                 if (!string.IsNullOrWhiteSpace(
-                    message))
+                    title))
                 {
-                    return CleanTitle(
-                        message);
+                    return title;
                 }
 
                 // -------------------------------------------------
-                // Some Quake maps can use netname.
+                // Some maps use netname.
                 // -------------------------------------------------
 
-                string netname =
-                    ExtractEntityValue(
-                        entity,
+                title =
+                    ExtractEncodedEntityValue(
+                        entityData,
+                        entityStart,
+                        entityEnd,
                         "netname");
 
                 if (!string.IsNullOrWhiteSpace(
-                    netname))
+                    title))
                 {
-                    return CleanTitle(
-                        netname);
+                    return title;
                 }
 
                 return "";
@@ -701,6 +697,30 @@ public class PakMapDetector
             position =
                 entityEnd + 1;
         }
+
+        return "";
+    }
+
+    // =========================================================
+    // FIND BYTE
+    // =========================================================
+
+    private int FindByte(
+        byte[] data,
+        byte value,
+        int start)
+    {
+        for (int i = start;
+             i < data.Length;
+             i++)
+        {
+            if (data[i] == value)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     // =========================================================
@@ -708,16 +728,21 @@ public class PakMapDetector
     // =========================================================
 
     private string ExtractEntityValue(
-        string entity,
+        byte[] data,
+        int entityStart,
+        int entityEnd,
         string key)
     {
-        string search =
-            "\"" + key + "\"";
+        byte[] keyBytes =
+            Encoding.ASCII.GetBytes(
+                "\"" + key + "\"");
 
         int keyPosition =
-            entity.IndexOf(
-                search,
-                StringComparison.OrdinalIgnoreCase);
+            FindSequence(
+                data,
+                keyBytes,
+                entityStart,
+                entityEnd);
 
         if (keyPosition < 0)
         {
@@ -725,12 +750,14 @@ public class PakMapDetector
         }
 
         int valueStart =
-            entity.IndexOf(
-                '"',
+            FindByte(
+                data,
+                (byte)'"',
                 keyPosition +
-                search.Length);
+                keyBytes.Length);
 
-        if (valueStart < 0)
+        if (valueStart < 0 ||
+            valueStart >= entityEnd)
         {
             return "";
         }
@@ -738,47 +765,392 @@ public class PakMapDetector
         valueStart++;
 
         int valueEnd =
-            valueStart;
+            FindClosingQuote(
+                data,
+                valueStart,
+                entityEnd);
 
-        while (valueEnd < entity.Length)
-        {
-            if (entity[valueEnd] == '"' &&
-                entity[valueEnd - 1] != '\\')
-            {
-                break;
-            }
-
-            valueEnd++;
-        }
-
-        if (valueEnd >= entity.Length)
+        if (valueEnd < 0)
         {
             return "";
         }
 
-        return entity.Substring(
+        return Encoding.ASCII
+            .GetString(
+                data,
                 valueStart,
                 valueEnd - valueStart)
             .Trim();
     }
 
     // =========================================================
-    // CLEAN TITLE
+    // ENCODED ENTITY VALUE
     // =========================================================
 
-    private string CleanTitle(
-        string title)
+    private string ExtractEncodedEntityValue(
+        byte[] data,
+        int entityStart,
+        int entityEnd,
+        string key)
     {
-        return title
-            .Replace(
-                "\\n",
-                " ")
-            .Replace(
-                "\r",
-                " ")
-            .Replace(
-                "\n",
-                " ")
+        byte[] keyBytes =
+            Encoding.ASCII.GetBytes(
+                "\"" + key + "\"");
+
+        int keyPosition =
+            FindSequence(
+                data,
+                keyBytes,
+                entityStart,
+                entityEnd);
+
+        if (keyPosition < 0)
+        {
+            return "";
+        }
+
+        int valueStart =
+            FindByte(
+                data,
+                (byte)'"',
+                keyPosition +
+                keyBytes.Length);
+
+        if (valueStart < 0 ||
+            valueStart >= entityEnd)
+        {
+            return "";
+        }
+
+        valueStart++;
+
+        int valueEnd =
+            FindClosingQuote(
+                data,
+                valueStart,
+                entityEnd);
+
+        if (valueEnd < 0)
+        {
+            return "";
+        }
+
+        return DecodeQuakeTitle(
+            data,
+            valueStart,
+            valueEnd);
+    }
+
+    // =========================================================
+    // FIND BYTE SEQUENCE
+    // =========================================================
+
+    private int FindSequence(
+        byte[] data,
+        byte[] sequence,
+        int start,
+        int end)
+    {
+        if (sequence.Length == 0)
+        {
+            return -1;
+        }
+
+        int last =
+            end -
+            sequence.Length +
+            1;
+
+        for (int i = start;
+             i < last;
+             i++)
+        {
+            bool match = true;
+
+            for (int j = 0;
+                 j < sequence.Length;
+                 j++)
+            {
+                if (data[i + j] !=
+                    sequence[j])
+                {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // =========================================================
+    // FIND CLOSING QUOTE
+    // =========================================================
+
+    private int FindClosingQuote(
+        byte[] data,
+        int start,
+        int end)
+    {
+        for (int i = start;
+             i < end;
+             i++)
+        {
+            if (data[i] != '"')
+            {
+                continue;
+            }
+
+            // -------------------------------------------------
+            // Ignore escaped quotes.
+            // -------------------------------------------------
+
+            int backslashes = 0;
+            int p = i - 1;
+
+            while (p >= start &&
+                   data[p] == '\\')
+            {
+                backslashes++;
+                p--;
+            }
+
+            if ((backslashes & 1) == 0)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // =========================================================
+    // DECODE QUAKE TITLE
+    // =========================================================
+
+    private string DecodeQuakeTitle(
+        byte[] data,
+        int start,
+        int end)
+    {
+        StringBuilder result =
+            new();
+
+        byte previous = 0;
+
+        for (int i = start;
+             i < end;
+             i++)
+        {
+            byte current =
+                data[i];
+
+            // -------------------------------------------------
+            // Stop on null.
+            // -------------------------------------------------
+
+            if (current == 0)
+            {
+                break;
+            }
+
+            // -------------------------------------------------
+            // Quake entity newline:
+            //
+            // "\n"
+            //
+            // Replace with a normal space.
+            // -------------------------------------------------
+
+            if (current == (byte)'n' &&
+                previous == (byte)'\\')
+            {
+                previous = current;
+
+                if (result.Length > 0)
+                {
+                    result.Remove(
+                        result.Length - 1,
+                        1);
+                }
+
+                result.Append(' ');
+                continue;
+            }
+
+            // -------------------------------------------------
+            // Avoid duplicate spaces.
+            // -------------------------------------------------
+
+            if (!(previous == 32 &&
+                  current == 32))
+            {
+                result.Append(
+                    GetQuakeCharacter(
+                        current));
+            }
+
+            previous =
+                current;
+        }
+
+        return result
+            .ToString()
             .Trim();
+    }
+
+    // =========================================================
+    // NATURAL MAP NAME SORTING
+    // =========================================================
+
+    private sealed class NaturalMapNameComparer :
+        IComparer<string>
+    {
+        public int Compare(
+            string? x,
+            string? y)
+        {
+            if (ReferenceEquals(x, y))
+            {
+                return 0;
+            }
+
+            if (x is null)
+            {
+                return -1;
+            }
+
+            if (y is null)
+            {
+                return 1;
+            }
+
+            int ix = 0;
+            int iy = 0;
+
+            while (ix < x.Length &&
+                   iy < y.Length)
+            {
+                char cx = x[ix];
+                char cy = y[iy];
+
+                if (char.IsDigit(cx) &&
+                    char.IsDigit(cy))
+                {
+                    int startX = ix;
+                    int startY = iy;
+
+                    while (ix < x.Length &&
+                           char.IsDigit(x[ix]))
+                    {
+                        ix++;
+                    }
+
+                    while (iy < y.Length &&
+                           char.IsDigit(y[iy]))
+                    {
+                        iy++;
+                    }
+
+                    string numberX =
+                        x.Substring(
+                            startX,
+                            ix - startX);
+
+                    string numberY =
+                        y.Substring(
+                            startY,
+                            iy - startY);
+
+                    if (long.TryParse(
+                            numberX,
+                            out long valueX) &&
+                        long.TryParse(
+                            numberY,
+                            out long valueY))
+                    {
+                        int numericResult =
+                            valueX.CompareTo(valueY);
+
+                        if (numericResult != 0)
+                        {
+                            return numericResult;
+                        }
+                    }
+                    else
+                    {
+                        int lengthResult =
+                            numberX.Length.CompareTo(
+                                numberY.Length);
+
+                        if (lengthResult != 0)
+                        {
+                            return lengthResult;
+                        }
+                    }
+
+                    // Same numeric value: continue comparing
+                    // the rest of the map name.
+                    continue;
+                }
+
+                int charResult =
+                    char.ToUpperInvariant(cx)
+                        .CompareTo(
+                            char.ToUpperInvariant(cy));
+
+                if (charResult != 0)
+                {
+                    return charResult;
+                }
+
+                ix++;
+                iy++;
+            }
+
+            return x.Length.CompareTo(y.Length);
+        }
+    }
+
+    // =========================================================
+    // QUAKE CHARACTER
+    // =========================================================
+
+    private string GetQuakeCharacter(
+        byte value)
+    {
+        // -----------------------------------------------------
+        // Use the separate Quake character map.
+        // -----------------------------------------------------
+
+        if (value <
+            QuakeCharMap.Characters.Length)
+        {
+            string mapped =
+                QuakeCharMap.Characters[value];
+
+            if (!string.IsNullOrEmpty(
+                mapped))
+            {
+                return mapped;
+            }
+        }
+
+        // -----------------------------------------------------
+        // Keep ordinary printable ASCII intact.
+        // -----------------------------------------------------
+
+        if (value >= 32 &&
+            value <= 126)
+        {
+            return ((char)value).ToString();
+        }
+
+        return "";
     }
 }
