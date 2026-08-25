@@ -8,6 +8,7 @@ A simple launcher for Quake and its mission packs.
 - Automatic map detection from pak files or custom folders.
 - Difficulty settings for any existing map.
 - Command line preview based on custom selection.
+- Extra arguments that can be added manually.
 
 # Features planned
 - Quake: Dawn of the Machine (2026) support - DONE (v0.2)
