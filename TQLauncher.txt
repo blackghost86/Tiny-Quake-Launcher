@@ -27,6 +27,12 @@ Install .NET 10.0 Desktop Runtime, but only if needed.
 
 Changelog
 ---------------------------------------------------------------------
+0.5:
+- Added a second command line box to insert extra arguments.
+- Added a button to erase the manual/extra arguments.
+- Added a button to create a desktop shortcut.
+
+
 0.4:
 - Fixed the way maps or loose maps are read, now we have actual maps.
 - Fixed the way map titles work, now we have the actual title.
