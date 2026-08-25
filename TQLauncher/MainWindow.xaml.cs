@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using TinyQuakeLauncher.Models;
@@ -178,6 +179,24 @@ public partial class MainWindow : Window
         List<MapInfo> maps =
             pakMapDetector.DetectMaps(gameFolder);
 
+        // Exclude test maps from every episode/mod.
+        maps = maps
+            .Where(
+                map =>
+                {
+                    string mapName =
+                        Path.GetFileNameWithoutExtension(
+                            map.FileName);
+
+                    return !mapName.StartsWith(
+                               "b_",
+                               StringComparison.OrdinalIgnoreCase)
+                        && !mapName.StartsWith(
+                               "test_",
+                               StringComparison.OrdinalIgnoreCase);
+                })
+            .ToList();
+
         foreach (MapInfo map in maps)
         {
             MapComboBox.Items.Add(map);
@@ -225,16 +244,49 @@ public partial class MainWindow : Window
         UpdateCommandArguments();
     }
 
+    private static System.Windows.Media.Brush HexBrush(string hex)
+    {
+        return new System.Windows.Media.SolidColorBrush(
+            (System.Windows.Media.Color)
+                System.Windows.Media.ColorConverter.ConvertFromString(hex));
+    }
+
     private void SetupDifficultyOptions()
     {
         DifficultyComboBox.Items.Clear();
 
-        DifficultyComboBox.Items.Add("Easy");
-        DifficultyComboBox.Items.Add("Normal");
-        DifficultyComboBox.Items.Add("Hard");
-        DifficultyComboBox.Items.Add("Nightmare");
+        DifficultyComboBox.Items.Add(
+            new Difficulty
+            {
+                Name = "Easy",
+                Value = 0,
+                Foreground = HexBrush("#000000")
+            });
 
-        // Don't select anything until a Quake folder is selected.
+        DifficultyComboBox.Items.Add(
+            new Difficulty
+            {
+                Name = "Normal",
+                Value = 1,
+                Foreground = HexBrush("#000000")
+            });
+
+        DifficultyComboBox.Items.Add(
+            new Difficulty
+            {
+                Name = "Hard",
+                Value = 2,
+                Foreground = HexBrush("#A64B00")
+            });
+
+        DifficultyComboBox.Items.Add(
+            new Difficulty
+            {
+                Name = "Nightmare",
+                Value = 3,
+                Foreground = HexBrush("#990000")
+            });
+
         DifficultyComboBox.SelectedIndex = -1;
     }
 
@@ -283,29 +335,10 @@ public partial class MainWindow : Window
         }
 
         // Difficulty
-        if (DifficultyComboBox.SelectedItem is string difficulty)
+        if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
         {
-            int skill = 1;
-
-            if (difficulty == "Easy")
-            {
-                skill = 0;
-            }
-            else if (difficulty == "Normal")
-            {
-                skill = 1;
-            }
-            else if (difficulty == "Hard")
-            {
-                skill = 2;
-            }
-            else if (difficulty == "Nightmare")
-            {
-                skill = 3;
-            }
-
             arguments.Add(
-                "+skill " + skill);
+                "+skill " + difficulty.Value);
         }
 
         // Map
