@@ -4,12 +4,17 @@ A simple launcher for Quake and its mission packs.
 
 Features
 ----------------------------------------------------------------------
-- Runs Quake from your desktop or Quake folder (needs Quake game path).
+- Runs Quake from your desktop or your main Quake directory.
 - Automatic Quake source port detection.
 - Automatic episode/mod detection.
-- Automatic map detection (from PAK files or custom folders).
-- Automatic map title for any selected map.
+- Automatic map detection from pak files or custom folders.
+- Difficulty settings for any existing map.
 - Command line preview based on custom selection.
+
+Features planned
+----------------------------------------------------------------------
+- Quake II support and its mission packs.
+- Multiplayer support for both games.
 
 Installation
 ----------------------------------------------------------------------
@@ -22,6 +27,11 @@ Install .NET 10.0 Desktop Runtime, but only if needed.
 
 Changelog
 ---------------------------------------------------------------------
+0.4:
+- Fixed the way maps or loose maps are read, now we have actual maps.
+- Fixed the way map titles work, now we have the actual title.
+- Added colors for difficulty settings.
+
 0.3:
 - Improved detection for custom folders and maps.
 - Improved launcher theme, buttons and fonts.
