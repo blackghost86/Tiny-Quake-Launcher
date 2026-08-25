@@ -297,11 +297,147 @@ public partial class MainWindow : Window
         UpdateCommandArguments();
     }
 
-    private void UpdateCommandArguments()
+    private void ExtraArgumentsTextBox_TextChanged(
+        object sender,
+        TextChangedEventArgs e)
+    {
+        UpdateCommandArguments();
+    }
+
+    private void ClearExtraArgumentsButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        ExtraArgumentsTextBox.Clear();
+    }
+
+    private void CreateDesktopShortcutButton_Click(
+        object sender,
+        RoutedEventArgs e)
     {
         Engine? engine =
             EngineComboBox.SelectedItem as Engine;
 
+        if (engine == null)
+        {
+            System.Windows.MessageBox.Show(
+                "Please select an engine first.",
+                "Tiny Quake Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+
+            return;
+        }
+
+        if (!File.Exists(engine.ExecutablePath))
+        {
+            System.Windows.MessageBox.Show(
+                "The selected Quake engine could not be found.\n\n" +
+                $"Executable:\n{engine.ExecutablePath}",
+                "Tiny Quake Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+
+            return;
+        }
+
+        try
+        {
+            List<string> arguments =
+                BuildLaunchArguments();
+
+            string shortcutArguments =
+                string.Join(
+                    " ",
+                    arguments.Select(QuoteShortcutArgument));
+
+            string desktop =
+                Environment.GetFolderPath(
+                    Environment.SpecialFolder.DesktopDirectory);
+
+            string shortcutPath =
+                Path.Combine(
+                    desktop,
+                    "Tiny Quake Launcher - " +
+                    engine.Name +
+                    ".lnk");
+
+            Type? shellType =
+                Type.GetTypeFromProgID("WScript.Shell");
+
+            if (shellType == null)
+            {
+                throw new InvalidOperationException(
+                    "Windows Script Host is not available.");
+            }
+
+            dynamic shell =
+                Activator.CreateInstance(shellType)!;
+
+            dynamic shortcut =
+                shell.CreateShortcut(shortcutPath);
+
+            shortcut.TargetPath =
+                engine.ExecutablePath;
+
+            shortcut.WorkingDirectory =
+                QuakeFolderTextBox.Text.Trim();
+
+            shortcut.Arguments =
+                shortcutArguments;
+
+            shortcut.Description =
+                "Tiny Quake Launcher command line shortcut";
+
+            shortcut.IconLocation =
+                engine.ExecutablePath + ",0";
+
+            shortcut.Save();
+
+            StatusText.Text =
+                "Desktop shortcut created.";
+
+            System.Windows.MessageBox.Show(
+                "Desktop shortcut created successfully.",
+                "Tiny Quake Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (System.Exception ex)
+        {
+            StatusText.Text =
+                "Could not create desktop shortcut.";
+
+            System.Windows.MessageBox.Show(
+                "Tiny Quake Launcher could not create the desktop shortcut.\n\n" +
+                $"Error:\n{ex.Message}",
+                "Tiny Quake Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private static string QuoteShortcutArgument(string argument)
+    {
+        if (string.IsNullOrEmpty(argument))
+        {
+            return "\"\"";
+        }
+
+        if (!argument.Any(char.IsWhiteSpace) &&
+            !argument.Contains('"'))
+        {
+            return argument;
+        }
+
+        return "\"" +
+               argument.Replace("\\", "\\\\")
+                       .Replace("\"", "\\\"") +
+               "\"";
+    }
+
+    private List<string> BuildLaunchArguments()
+    {
         MissionPack? missionPack =
             MissionComboBox.SelectedItem as MissionPack;
 
@@ -317,36 +453,48 @@ public partial class MainWindow : Window
                     selectedMap.FileName);
         }
 
+        List<string> arguments = new();
+
+        if (missionPack != null &&
+            !string.IsNullOrWhiteSpace(
+                missionPack.GameDirectory))
+        {
+            arguments.Add("-game");
+            arguments.Add(missionPack.GameDirectory);
+        }
+
+        if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
+        {
+            arguments.Add("+skill");
+            arguments.Add(difficulty.Value.ToString());
+        }
+
+        if (!string.IsNullOrWhiteSpace(mapName))
+        {
+            arguments.Add("+map");
+            arguments.Add(mapName);
+        }
+
+        arguments.AddRange(
+            ParseExtraArguments(
+                ExtraArgumentsTextBox.Text));
+
+        return arguments;
+    }
+
+    private void UpdateCommandArguments()
+    {
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
+
         if (engine == null)
         {
             CommandArgumentsTextBox.Text = "";
             return;
         }
 
-        List<string> arguments = new();
-
-        // Episode
-        if (missionPack != null &&
-            !string.IsNullOrWhiteSpace(
-                missionPack.GameDirectory))
-        {
-            arguments.Add(
-                "-game " + missionPack.GameDirectory);
-        }
-
-        // Difficulty
-        if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
-        {
-            arguments.Add(
-                "+skill " + difficulty.Value);
-        }
-
-        // Map
-        if (!string.IsNullOrWhiteSpace(mapName))
-        {
-            arguments.Add(
-                "+map " + mapName);
-        }
+        List<string> arguments =
+            BuildLaunchArguments();
 
         string argumentString =
             string.Join(" ", arguments);
@@ -362,6 +510,64 @@ public partial class MainWindow : Window
         RoutedEventArgs e)
     {
         LaunchQuake();
+    }
+
+    private static List<string> ParseExtraArguments(
+        string text)
+    {
+        List<string> result = new();
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return result;
+        }
+
+        bool inQuotes = false;
+        bool escaped = false;
+        string current = "";
+
+        foreach (char character in text)
+        {
+            if (escaped)
+            {
+                current += character;
+                escaped = false;
+                continue;
+            }
+
+            if (character == '\\')
+            {
+                escaped = true;
+                current += character;
+                continue;
+            }
+
+            if (character == '"')
+            {
+                inQuotes = !inQuotes;
+                continue;
+            }
+
+            if (char.IsWhiteSpace(character) && !inQuotes)
+            {
+                if (current.Length > 0)
+                {
+                    result.Add(current);
+                    current = "";
+                }
+
+                continue;
+            }
+
+            current += character;
+        }
+
+        if (current.Length > 0)
+        {
+            result.Add(current);
+        }
+
+        return result;
     }
 
     private void LaunchQuake()
@@ -446,58 +652,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        List<string> arguments = new();
-
-        // -----------------------------------------
-        // Episode
-        // -----------------------------------------
-
-        if (missionPack != null &&
-            !string.IsNullOrWhiteSpace(
-                missionPack.GameDirectory))
-        {
-            arguments.Add("-game");
-            arguments.Add(missionPack.GameDirectory);
-        }
-
-        // -----------------------------------------
-        // Difficulty
-        // -----------------------------------------
-
-        if (DifficultyComboBox.SelectedItem is string difficulty)
-        {
-            int skill = 1;
-
-            if (difficulty == "Easy")
-            {
-                skill = 0;
-            }
-            else if (difficulty == "Normal")
-            {
-                skill = 1;
-            }
-            else if (difficulty == "Hard")
-            {
-                skill = 2;
-            }
-            else if (difficulty == "Nightmare")
-            {
-                skill = 3;
-            }
-
-            arguments.Add("+skill");
-            arguments.Add(skill.ToString());
-        }
-
-        // -----------------------------------------
-        // Map
-        // -----------------------------------------
-
-        if (!string.IsNullOrWhiteSpace(mapName))
-        {
-            arguments.Add("+map");
-            arguments.Add(mapName);
-        }
+        List<string> arguments =
+            BuildLaunchArguments();
 
         try
         {
