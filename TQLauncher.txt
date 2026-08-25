@@ -1,6 +1,6 @@
 Tiny Quake Launcher
 ----------------------------------------------------------------------
-A simple launcher for Quake and its mission packs.
+A simple launcher for Quake, Quake 2 and their mission packs.
 
 Features
 ----------------------------------------------------------------------
@@ -15,8 +15,8 @@ Features
 Features planned
 ----------------------------------------------------------------------
 - Quake: Dawn of the Machine (2026) support - DONE (v0.2)
-- Quake II support and its mission packs - IN PROGRESS
-- Multiplayer support for both games - NOT STARTED
+- Quake 2 support - DONE (v0.7)
+- Multiplayer support for both games - IN PROGRESS
 - Support for other games? - NOT STARTED
 
 Installation
@@ -30,8 +30,13 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 ---------------------------------------------------------------------
+0.7:
+- Added support for Quake 2 and its mission packs.
+- Added all the official episodes for Quake 2.
+- Fixed the way map titles are identified.
+
 0.6:
-- Added a few more engine source ports to the list.
+- Added some additional engine source ports to the list.
 - Fixed some typos and improved launcher theme.
 
 0.5:
