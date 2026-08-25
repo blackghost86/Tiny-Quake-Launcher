@@ -16,7 +16,11 @@ public partial class MainWindow : Window
 
     private readonly MissionPackDetector missionPackDetector = new();
 
+    private readonly MissionPackDetector2 missionPackDetector2 = new();
+
     private readonly PakMapDetector pakMapDetector = new();
+
+    private readonly PakMapDetector2 pakMapDetector2 = new();
 
     public MainWindow()
     {
@@ -82,9 +86,23 @@ public partial class MainWindow : Window
     {
         MissionComboBox.Items.Clear();
 
-        List<MissionPack> missionPacks =
-            missionPackDetector
-                .DetectMissionPacks(quakeFolder);
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
+
+        List<MissionPack> missionPacks;
+
+        if (IsQuake2Engine(engine))
+        {
+            missionPacks =
+                missionPackDetector2
+                    .DetectMissionPacks(quakeFolder);
+        }
+        else
+        {
+            missionPacks =
+                missionPackDetector
+                    .DetectMissionPacks(quakeFolder);
+        }
 
         foreach (MissionPack missionPack in missionPacks)
         {
@@ -106,6 +124,27 @@ public partial class MainWindow : Window
         }
 
         DetectMaps();
+    }
+
+    private static bool IsQuake2Engine(Engine? engine)
+    {
+        if (engine == null)
+        {
+            return false;
+        }
+
+        return engine.Name.Equals(
+                   "Yamagi Quake II",
+                   StringComparison.OrdinalIgnoreCase)
+            || engine.Name.Equals(
+                   "Q2Pro",
+                   StringComparison.OrdinalIgnoreCase)
+            || engine.Name.Equals(
+                   "KMQuake II",
+                   StringComparison.OrdinalIgnoreCase)
+            || engine.Name.Equals(
+                   "Quake II RTX",
+                   StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetEpisodeFolder(MissionPack missionPack)
@@ -180,45 +219,65 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Detect maps from the selected episode folder.
-        List<MapInfo> maps =
-            pakMapDetector.DetectMaps(gameFolder);
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
 
-        // Exclude test maps from every episode/mod.
-        maps = maps
-            .Where(
-                map =>
-                {
-                    string mapName =
-                        Path.GetFileNameWithoutExtension(
-                            map.FileName);
+        bool isQuake2 =
+            IsQuake2Engine(engine);
 
-                    return !mapName.StartsWith(
-                               "b_",
-                               StringComparison.OrdinalIgnoreCase)
-                        && !mapName.StartsWith(
-                               "test_",
-                               StringComparison.OrdinalIgnoreCase);
-                })
-            .ToList();
+        List<MapInfo> maps;
+
+        if (isQuake2)
+        {
+            maps =
+                pakMapDetector2.DetectMaps(gameFolder);
+        }
+        else
+        {
+            maps =
+                pakMapDetector.DetectMaps(gameFolder);
+
+            maps = maps
+                .Where(
+                    map =>
+                    {
+                        string mapName =
+                            Path.GetFileNameWithoutExtension(
+                                map.FileName);
+
+                        return !mapName.StartsWith(
+                                   "b_",
+                                   StringComparison.OrdinalIgnoreCase)
+                            && !mapName.StartsWith(
+                                   "test_",
+                                   StringComparison.OrdinalIgnoreCase);
+                    })
+                .ToList();
+        }
 
         foreach (MapInfo map in maps)
         {
             MapComboBox.Items.Add(map);
         }
 
-        // Prefer start.bsp.
-        int startIndex =
-            maps.FindIndex(
-                map => string.Equals(
-                    map.FileName,
-                    "start.bsp",
-                    StringComparison.OrdinalIgnoreCase));
-
-        if (startIndex >= 0)
+        if (!isQuake2)
         {
-            MapComboBox.SelectedIndex =
-                startIndex;
+            int startIndex =
+                maps.FindIndex(
+                    map => string.Equals(
+                        map.FileName,
+                        "start.bsp",
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (startIndex >= 0)
+            {
+                MapComboBox.SelectedIndex =
+                    startIndex;
+            }
+            else if (MapComboBox.Items.Count > 0)
+            {
+                MapComboBox.SelectedIndex = 0;
+            }
         }
         else if (MapComboBox.Items.Count > 0)
         {
@@ -273,7 +332,7 @@ public partial class MainWindow : Window
             {
                 Name = "Normal",
                 Value = 1,
-                Foreground = HexBrush("#000000")
+                Foreground = HexBrush("#006400")
             });
 
         DifficultyComboBox.Items.Add(
@@ -443,6 +502,19 @@ public partial class MainWindow : Window
 
     private List<string> BuildLaunchArguments()
     {
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
+
+        if (IsQuake2Engine(engine))
+        {
+            return BuildQuake2LaunchArguments();
+        }
+
+        return BuildQuake1LaunchArguments();
+    }
+
+    private List<string> BuildQuake1LaunchArguments()
+    {
         MissionPack? missionPack =
             MissionComboBox.SelectedItem as MissionPack;
 
@@ -480,6 +552,61 @@ public partial class MainWindow : Window
             arguments.Add(mapName);
         }
 
+        arguments.AddRange(
+            ParseExtraArguments(
+                ExtraArgumentsTextBox.Text));
+
+        return arguments;
+    }
+
+    private List<string> BuildQuake2LaunchArguments()
+    {
+        MissionPack? missionPack =
+            MissionComboBox.SelectedItem as MissionPack;
+
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
+        string? mapName = null;
+
+        if (selectedMap != null)
+        {
+            mapName =
+                Path.GetFileNameWithoutExtension(
+                    selectedMap.FileName);
+        }
+
+        List<string> arguments = new();
+
+        // Quake II uses +set game for mission packs/mods.
+        // baseq2 is the default game directory.
+        if (missionPack != null &&
+            !string.IsNullOrWhiteSpace(
+                missionPack.GameDirectory) &&
+            !string.Equals(
+                missionPack.GameDirectory,
+                "baseq2",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            arguments.Add("+set");
+            arguments.Add("game");
+            arguments.Add(missionPack.GameDirectory);
+        }
+
+        if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
+        {
+            arguments.Add("+set");
+            arguments.Add("skill");
+            arguments.Add(difficulty.Value.ToString());
+        }
+
+        if (!string.IsNullOrWhiteSpace(mapName))
+        {
+            arguments.Add("+map");
+            arguments.Add(mapName);
+        }
+
+        // Manual extra arguments remain at the end.
         arguments.AddRange(
             ParseExtraArguments(
                 ExtraArgumentsTextBox.Text));

@@ -247,7 +247,7 @@
                 VerticalAlignment="Center"/>
             <TextBlock
                 Grid.Column="1"
-                Text="v0.6"
+                Text="v0.7"
                 FontWeight="Bold"
                 Foreground="#B0B0B0"
                 HorizontalAlignment="Right"
