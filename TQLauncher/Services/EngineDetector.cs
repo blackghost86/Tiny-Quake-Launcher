@@ -42,7 +42,7 @@ public class EngineDetector
         return fileName switch
         {
             "quakespasm.exe" => CreateEngine(
-                "QuakeSpasm",
+                "Quakespasm",
                 executablePath),
 
             "vkquake.exe" => CreateEngine(
