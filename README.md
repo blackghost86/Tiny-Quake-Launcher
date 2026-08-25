@@ -1,5 +1,5 @@
 # Tiny Quake Launcher
-A simple launcher for Quake and its mission packs.
+A simple launcher for Quake, Quake 2 and their mission packs.
 
 # Features
 - Runs Quake from your desktop or your main Quake directory.
@@ -12,7 +12,7 @@ A simple launcher for Quake and its mission packs.
 
 # Features planned
 - Quake: Dawn of the Machine (2026) support - DONE (v0.2)
-- Quake II support and its mission packs - IN PROGRESS
+- Quake 2 support and its mission packs - DONE (v0.7)
 - Multiplayer support for both games - NOT STARTED
 - Support for other games? - NOT STARTED
 
