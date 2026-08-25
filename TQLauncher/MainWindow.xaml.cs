@@ -12,6 +12,8 @@ public partial class MainWindow : Window
 {
     private readonly EngineDetector engineDetector = new();
 
+    private readonly EngineDetector2 engineDetector2 = new();
+
     private readonly MissionPackDetector missionPackDetector = new();
 
     private readonly PakMapDetector pakMapDetector = new();
@@ -61,6 +63,9 @@ public partial class MainWindow : Window
 
         List<Engine> engines =
             engineDetector.DetectEngines(quakeFolder);
+
+        engines.AddRange(
+            engineDetector2.DetectEngines(quakeFolder));
 
         foreach (Engine engine in engines)
         {
