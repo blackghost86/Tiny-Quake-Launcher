@@ -14,7 +14,8 @@ A simple launcher for Quake, Quake 2 and their mission packs.
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
 - Quake 2 support - done (v0.7)
 - Multiplayer support for Quake - in progress (v1.0)
-- Multiplayer support for Quake 2 - in progress (v1.2)
+- Omicron bots support for multiplayer - in progress (v1.0)
+- Multiplayer support for Quake 2 - not started (v1.2)
 - Support for other games? - to be confirmed
 
 # Installation
@@ -24,5 +25,5 @@ Extract TQLauncher.exe on your desktop or into your Quake directory.
 Install [.NET 10.0 Desktop Runtime](https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.11/windowsdesktop-runtime-10.0.11-win-x64.exe) if prompted.
 
 # Credits
-- Thanks to [MaxED](https://github.com/m-x-d) and his SQLauncher.
+- Thanks to [MaxED](https://github.com/m-x-d) and his SQLauncher2.
 - Thanks to MrElusive for Omicron bots.
