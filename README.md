@@ -19,7 +19,7 @@ A simple launcher for Quake, Quake 2 and their mission packs.
 - Support for other games? - to be confirmed
 
 # Installation
-Extract TQLauncher.exe on your desktop or into your Quake directory.
+Extract and run TQLauncher.exe on your desktop or from your Quake directory.
 
 # Prerequisites
 Install [.NET 10.0 Desktop Runtime](https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.11/windowsdesktop-runtime-10.0.11-win-x64.exe) if prompted.
