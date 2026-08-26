@@ -26,4 +26,4 @@ Install [.NET 10.0 Desktop Runtime](https://builds.dotnet.microsoft.com/dotnet/W
 
 # Credits
 - Thanks to [MaxED](https://github.com/m-x-d) and his SQLauncher2.
-- Thanks to MrElusive for Omicron bots.
+- Thanks to MrElusive for [Omicron bots](https://www.slipseer.com/index.php?resources/omicron-bots.101/).
