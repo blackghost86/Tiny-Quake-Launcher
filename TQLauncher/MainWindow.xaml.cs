@@ -1,12 +1,29 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using TinyQuakeLauncher.Models;
 using TinyQuakeLauncher.Services;
 
 namespace TinyQuakeLauncher;
+
+public class LauncherSettings
+{
+    public string QuakeFolder { get; set; } = "";
+
+    public string EnginePath { get; set; } = "";
+
+    public string MissionPackDirectory { get; set; } = "";
+
+    public string MapFileName { get; set; } = "";
+
+    public int? Difficulty { get; set; }
+
+    public string ExtraArguments { get; set; } = "";
+}
 
 public partial class MainWindow : Window
 {
@@ -18,17 +35,283 @@ public partial class MainWindow : Window
 
     private readonly MissionPackDetector2 missionPackDetector2 = new();
 
-    private readonly PakMapDetector pakMapDetector = new();
+    private readonly MapDetector MapDetector = new();
 
-    private readonly PakMapDetector2 pakMapDetector2 = new();
+    private readonly MapDetector2 MapDetector2 = new();
+
+    private static readonly string SettingsFolder =
+        Path.Combine(
+            Environment.GetFolderPath(
+                Environment.SpecialFolder.LocalApplicationData),
+            "TinyQuakeLauncher");
+
+    private static readonly string SettingsFile =
+        Path.Combine(
+            SettingsFolder,
+            "TQLauncher.json");
 
     public MainWindow()
     {
         InitializeComponent();
 
+        Closing += MainWindow_Closing;
+
         SetupDifficultyOptions();
 
+        QuakeFolderTextBox.TextChanged +=
+            QuakeFolderTextBox_TextChanged;
+
+        QuakeFolderTextBox.SizeChanged +=
+            QuakeFolderTextBox_SizeChanged;
+
+        LoadSavedQuakeFolder();
+
         UpdateCommandArguments();
+    }
+
+    private void LoadSavedQuakeFolder()
+    {
+        try
+        {
+            if (!File.Exists(SettingsFile))
+            {
+                return;
+            }
+
+            string json =
+                File.ReadAllText(SettingsFile);
+
+            LauncherSettings? settings =
+                JsonSerializer.Deserialize<LauncherSettings>(json);
+
+            if (settings == null ||
+                string.IsNullOrWhiteSpace(settings.QuakeFolder))
+            {
+                return;
+            }
+
+            if (!Directory.Exists(settings.QuakeFolder))
+            {
+                return;
+            }
+
+            QuakeFolderTextBox.Text =
+                settings.QuakeFolder;
+
+            DetectQuakeInstallation(
+                settings.QuakeFolder);
+
+            RestoreSavedSelections(settings);
+        }
+        catch
+        {
+            // Ignore settings errors and let the user
+            // select a folder manually.
+        }
+    }
+
+    private void SaveQuakeFolder(
+        string folder)
+    {
+        try
+        {
+            Directory.CreateDirectory(
+                SettingsFolder);
+
+            LauncherSettings settings =
+                LoadSettings();
+
+            settings.QuakeFolder =
+                folder;
+
+            SaveSettings(settings);
+        }
+        catch
+        {
+            // Ignore settings errors.
+        }
+    }
+
+    private LauncherSettings LoadSettings()
+    {
+        try
+        {
+            if (File.Exists(SettingsFile))
+            {
+                string json =
+                    File.ReadAllText(SettingsFile);
+
+                LauncherSettings? settings =
+                    JsonSerializer.Deserialize<LauncherSettings>(json);
+
+                if (settings != null)
+                {
+                    return settings;
+                }
+            }
+        }
+        catch
+        {
+            // Fall back to default settings.
+        }
+
+        return new LauncherSettings();
+    }
+
+    private void SaveSettings(
+        LauncherSettings settings)
+    {
+        Directory.CreateDirectory(
+            SettingsFolder);
+
+        JsonSerializerOptions options =
+            new()
+            {
+                WriteIndented = true
+            };
+
+        File.WriteAllText(
+            SettingsFile,
+            JsonSerializer.Serialize(
+                settings,
+                options));
+    }
+
+    private void SaveCurrentSettings()
+    {
+        try
+        {
+            LauncherSettings settings =
+                LoadSettings();
+
+            settings.QuakeFolder =
+                QuakeFolderTextBox.Text.Trim();
+
+            Engine? engine =
+                EngineComboBox.SelectedItem as Engine;
+
+            settings.EnginePath =
+                engine?.ExecutablePath ?? "";
+
+            MissionPack? missionPack =
+                MissionComboBox.SelectedItem as MissionPack;
+
+            settings.MissionPackDirectory =
+                missionPack?.GameDirectory ?? "";
+
+            MapInfo? selectedMap =
+                MapComboBox.SelectedItem as MapInfo;
+
+            settings.MapFileName =
+                selectedMap?.FileName ?? "";
+
+            if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
+            {
+                settings.Difficulty =
+                    difficulty.Value;
+            }
+            else
+            {
+                settings.Difficulty = null;
+            }
+
+            settings.ExtraArguments =
+                ExtraArgumentsTextBox.Text;
+
+            SaveSettings(settings);
+        }
+        catch
+        {
+            // Ignore settings errors.
+        }
+    }
+
+    private void RestoreSavedSelections(
+        LauncherSettings settings)
+    {
+        if (!string.IsNullOrWhiteSpace(settings.EnginePath))
+        {
+            Engine? engine =
+                EngineComboBox.Items
+                    .OfType<Engine>()
+                    .FirstOrDefault(
+                        item => string.Equals(
+                            item.ExecutablePath,
+                            settings.EnginePath,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (engine != null)
+            {
+                EngineComboBox.SelectedItem =
+                    engine;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+            settings.MissionPackDirectory))
+        {
+            MissionPack? missionPack =
+                MissionComboBox.Items
+                    .OfType<MissionPack>()
+                    .FirstOrDefault(
+                        item => string.Equals(
+                            item.GameDirectory,
+                            settings.MissionPackDirectory,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (missionPack != null)
+            {
+                MissionComboBox.SelectedItem =
+                    missionPack;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+            settings.MapFileName))
+        {
+            MapInfo? map =
+                MapComboBox.Items
+                    .OfType<MapInfo>()
+                    .FirstOrDefault(
+                        item => string.Equals(
+                            item.FileName,
+                            settings.MapFileName,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (map != null)
+            {
+                MapComboBox.SelectedItem =
+                    map;
+            }
+        }
+
+        if (settings.Difficulty.HasValue)
+        {
+            Difficulty? difficulty =
+                DifficultyComboBox.Items
+                    .OfType<Difficulty>()
+                    .FirstOrDefault(
+                        item => item.Value ==
+                            settings.Difficulty.Value);
+
+            if (difficulty != null)
+            {
+                DifficultyComboBox.SelectedItem =
+                    difficulty;
+            }
+        }
+
+        ExtraArgumentsTextBox.Text =
+            settings.ExtraArguments ?? "";
+
+        UpdateCommandArguments();
+    }
+
+    private void MainWindow_Closing(
+        object? sender,
+        System.ComponentModel.CancelEventArgs e)
+    {
+        SaveCurrentSettings();
     }
 
     private void BrowseButton_Click(object sender, RoutedEventArgs e)
@@ -45,11 +328,70 @@ public partial class MainWindow : Window
             QuakeFolderTextBox.Text =
                 dialog.SelectedPath;
 
+            SaveQuakeFolder(
+                dialog.SelectedPath);
+
             DetectQuakeInstallation(
                 dialog.SelectedPath);
 
             // Default difficulty is set to Normal.
             DifficultyComboBox.SelectedIndex = 1;
+        }
+    }
+
+    private void QuakeFolderTextBox_TextChanged(
+    object sender,
+    TextChangedEventArgs e)
+    {
+        UpdateQuakeFolderToolTip();
+    }
+
+    private void QuakeFolderTextBox_SizeChanged(
+        object sender,
+        SizeChangedEventArgs e)
+    {
+        UpdateQuakeFolderToolTip();
+    }
+
+    private void UpdateQuakeFolderToolTip()
+    {
+        string text =
+            QuakeFolderTextBox.Text;
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            QuakeFolderTextBox.ToolTip = null;
+            return;
+        }
+
+        FormattedText formattedText =
+            new FormattedText(
+                text,
+                System.Globalization.CultureInfo.CurrentCulture,
+                System.Windows.FlowDirection.LeftToRight,
+                new Typeface(
+                    QuakeFolderTextBox.FontFamily,
+                    QuakeFolderTextBox.FontStyle,
+                    QuakeFolderTextBox.FontWeight,
+                    QuakeFolderTextBox.FontStretch),
+                QuakeFolderTextBox.FontSize,
+                System.Windows.Media.Brushes.Black,
+                VisualTreeHelper.GetDpi(
+                    QuakeFolderTextBox).PixelsPerDip);
+
+        double availableWidth =
+            QuakeFolderTextBox.ActualWidth -
+            QuakeFolderTextBox.Padding.Left -
+            QuakeFolderTextBox.Padding.Right -
+            10;
+
+        if (formattedText.Width > availableWidth)
+        {
+            QuakeFolderTextBox.ToolTip = text;
+        }
+        else
+        {
+            QuakeFolderTextBox.ToolTip = null;
         }
     }
 
@@ -76,10 +418,18 @@ public partial class MainWindow : Window
             EngineComboBox.Items.Add(engine);
         }
 
-        if (EngineComboBox.Items.Count > 0)
+        if (EngineComboBox.Items.Count == 0)
         {
-            EngineComboBox.SelectedIndex = 0;
+            System.Windows.MessageBox.Show(
+                "No supported Quake engine was found.",
+                "Tiny Quake Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+
+            return;
         }
+
+        EngineComboBox.SelectedIndex = 0;
     }
 
     private void DetectMissionPacks(string quakeFolder)
@@ -230,12 +580,12 @@ public partial class MainWindow : Window
         if (isQuake2)
         {
             maps =
-                pakMapDetector2.DetectMaps(gameFolder);
+                MapDetector2.DetectMaps(gameFolder);
         }
         else
         {
             maps =
-                pakMapDetector.DetectMaps(gameFolder);
+                MapDetector.DetectMaps(gameFolder);
 
             maps = maps
                 .Where(
@@ -257,6 +607,11 @@ public partial class MainWindow : Window
 
         foreach (MapInfo map in maps)
         {
+            map.Foreground =
+                IsMultiplayerMap(map.FileName)
+                    ? System.Windows.Media.Brushes.Purple
+                    : System.Windows.Media.Brushes.Black;
+
             MapComboBox.Items.Add(map);
         }
 
@@ -285,6 +640,29 @@ public partial class MainWindow : Window
         }
 
         UpdateCommandArguments();
+    }
+
+    private static bool IsMultiplayerMap(
+        string fileName)
+    {
+        string mapName =
+            Path.GetFileNameWithoutExtension(fileName);
+
+        return mapName.Contains(
+                   "dm",
+                   StringComparison.OrdinalIgnoreCase)
+               || mapName.Contains(
+                   "base32",
+                   StringComparison.OrdinalIgnoreCase)
+               || mapName.Contains(
+                   "death32",
+                   StringComparison.OrdinalIgnoreCase)
+               || mapName.Contains(
+                   "ctf",
+                   StringComparison.OrdinalIgnoreCase)
+               || mapName.Contains(
+                   "horde",
+                   StringComparison.OrdinalIgnoreCase);
     }
 
     private void EngineComboBox_SelectionChanged(
@@ -382,10 +760,27 @@ public partial class MainWindow : Window
         Engine? engine =
             EngineComboBox.SelectedItem as Engine;
 
+        MissionPack? missionPack =
+            MissionComboBox.SelectedItem as MissionPack;
+
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
         if (engine == null)
         {
             System.Windows.MessageBox.Show(
                 "Please select an engine first.",
+                "Tiny Quake Launcher",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+
+            return;
+        }
+
+        if (missionPack == null)
+        {
+            System.Windows.MessageBox.Show(
+                "Please select an episode first.",
                 "Tiny Quake Launcher",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -415,16 +810,20 @@ public partial class MainWindow : Window
                     " ",
                     arguments.Select(QuoteShortcutArgument));
 
-            string desktop =
+            string desktopPath =
                 Environment.GetFolderPath(
                     Environment.SpecialFolder.DesktopDirectory);
 
+            string shortcutName =
+                $"Launch {engine.Name} - {missionPack.Name}.lnk";
+
+            shortcutName =
+                SanitizeFileName(shortcutName);
+
             string shortcutPath =
                 Path.Combine(
-                    desktop,
-                    "Tiny Quake Launcher - " +
-                    engine.Name +
-                    ".lnk");
+                    desktopPath,
+                    shortcutName);
 
             Type? shellType =
                 Type.GetTypeFromProgID("WScript.Shell");
@@ -479,6 +878,18 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        foreach (char invalidChar in Path.GetInvalidFileNameChars())
+        {
+            name = name.Replace(
+                invalidChar.ToString(),
+                "");
+        }
+
+        return name.Trim();
     }
 
     private static string QuoteShortcutArgument(string argument)
@@ -805,7 +1216,7 @@ public partial class MainWindow : Window
             Process.Start(startInfo);
 
             StatusText.Text =
-                $"Running {engine.Name} with custom settings.";
+                $"{engine.Name} is ready with custom settings.";
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
