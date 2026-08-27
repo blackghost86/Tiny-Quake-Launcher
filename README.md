@@ -15,7 +15,7 @@ A simple launcher for Quake, Quake 2 and their mission packs.
 - Quake 2 support - done (v0.7)
 - Multiplayer support for Quake - work in progress (v1.0)
 - Multiplayer support for Quake 2 - not started (v1.2)
-- Support for other games? - to be confirmed
+- Support for other games - not planned yet
 
 # Installation
 Extract and run TQLauncher.exe on your desktop or from your Quake directory.
