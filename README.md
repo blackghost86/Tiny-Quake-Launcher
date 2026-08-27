@@ -13,7 +13,7 @@ A simple launcher for Quake, Quake 2 and their mission packs.
 # Features planned
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
 - Quake 2 support - done (v0.7)
-- Multiplayer support for Quake - in progress (v1.0)
+- Multiplayer support for Quake - work in progress (v1.0)
 - Multiplayer support for Quake 2 - not started (v1.2)
 - Support for other games? - to be confirmed
 
