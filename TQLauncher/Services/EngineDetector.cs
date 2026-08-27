@@ -17,7 +17,7 @@ public class EngineDetector
         string[] executables = Directory.GetFiles(
             folder,
             "*.exe",
-            SearchOption.TopDirectoryOnly);
+            System.IO.SearchOption.AllDirectories);
 
         foreach (string executable in executables)
         {

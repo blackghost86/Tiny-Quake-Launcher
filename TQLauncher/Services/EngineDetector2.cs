@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using Microsoft.VisualBasic.FileIO;
+using System.IO;
 using TinyQuakeLauncher.Models;
 
 namespace TinyQuakeLauncher.Services;
@@ -17,7 +18,7 @@ public class EngineDetector2
         string[] executables = Directory.GetFiles(
             folder,
             "*.exe",
-            SearchOption.TopDirectoryOnly);
+            System.IO.SearchOption.AllDirectories);
 
         foreach (string executable in executables)
         {
