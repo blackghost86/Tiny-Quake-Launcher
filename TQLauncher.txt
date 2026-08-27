@@ -4,7 +4,7 @@ A simple launcher for Quake, Quake 2 and their mission packs.
 
 Features
 ----------------------------------------------------------------------
-- Runs Quake, Quake 2 and custom mods/mission packs.
+- Runs Quake from your desktop or your main Quake directory.
 - Automatic Quake source port detection.
 - Automatic episode/mod detection.
 - Automatic map detection from pak files or custom folders.
@@ -16,10 +16,9 @@ Features planned
 ----------------------------------------------------------------------
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
 - Quake 2 support - done (v0.7)
-- Multiplayer support for Quake - in progress (v1.0)
-- Omicron bots support for multiplayer - in progress (v1.0)
+- Multiplayer support for Quake - work in progress (v1.0)
 - Multiplayer support for Quake 2 - not started (v1.2)
-- Support for other games? - to be confirmed
+- Support for other games - not planned yet
 
 Installation
 ----------------------------------------------------------------------
@@ -32,6 +31,14 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 ---------------------------------------------------------------------
+0.8:
+- Massive code cleanup and renamed some classes and identifiers.
+- Launcher searches subdirs also instead of just main dir.
+- DM, CTF and Horde maps are now displayed in purple.
+- Settings are now stored in a .json file.
+- Added an error message when no engine is found.
+
+
 0.7:
 - Added support for Quake 2 and its mission packs.
 - Added all the official episodes for Quake 2.
