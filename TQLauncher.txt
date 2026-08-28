@@ -31,10 +31,18 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 ---------------------------------------------------------------------
+0.9:
+- Fixed a random crash if Quake folder was moved or deleted.
+- Fixed difficulty display if there's no valid engine.
+- Fixed additional engine files not created in their engine folder.
+- Added PK3 file detection and improved processing speed.
+- Added an option to close the app after launch.
+- Improved buttons, icons and border colors.
+
 0.8:
 - Massive code cleanup and renamed some classes and identifiers.
 - Launcher searches subdirs also instead of just main dir.
-- DM, CTF and Horde maps are now displayed in purple.
+- DM, CTF, Horde maps are displayed in purple.
 - Settings are now stored in a .json file.
 - Added an error message when no engine is found.
 
