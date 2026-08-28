@@ -21,6 +21,7 @@ public class MapDetector2
     // 4 bytes  = version
     // 19 lumps * 8 bytes
     // Lump 0 is the entity lump.
+
     private const int Quake2BspHeaderSize = 8 + (19 * 8);
 
     public List<MapInfo> DetectMaps(string gameFolder)

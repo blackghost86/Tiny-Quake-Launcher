@@ -13,6 +13,12 @@ public class MapDetector
     private const int PakDirectoryEntrySize = 64;
     private const int QuakeBspHeaderSize = 124;
     private const int QuakeBspVersion = 29;
+
+    // Quake 1 BSP header:
+    // 4 bytes  = version
+    // 15 lumps * 8 bytes
+    // Lump 0 is the entity lump.
+
     private const int QuakeBsp2Version2Psb =
         ('B' << 24) | ('S' << 16) | ('P' << 8) | '2';
     private const int QuakeBsp2VersionBsp2 =
