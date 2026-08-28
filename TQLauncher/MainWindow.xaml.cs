@@ -20,7 +20,11 @@ public class LauncherSettings
 
     public string MapFileName { get; set; } = "";
 
+    public bool MapSelectionCleared { get; set; }
+
     public int? Difficulty { get; set; }
+
+    public bool DifficultySelectionCleared { get; set; }
 
     public string ExtraArguments { get; set; } = "";
 }
@@ -50,19 +54,23 @@ public partial class MainWindow : Window
             SettingsFolder,
             "TQLauncher.json");
 
+    private bool restoreMapSelectionCleared;
+    private bool restoreDifficultySelectionCleared;
+
     public MainWindow()
     {
         InitializeComponent();
 
         Closing += MainWindow_Closing;
 
-        SetupDifficultyOptions();
-
         QuakeFolderTextBox.TextChanged +=
             QuakeFolderTextBox_TextChanged;
 
         QuakeFolderTextBox.SizeChanged +=
             QuakeFolderTextBox_SizeChanged;
+
+        MapComboBox.SizeChanged +=
+            MapComboBox_SizeChanged;
 
         LoadSavedQuakeFolder();
 
@@ -92,16 +100,35 @@ public partial class MainWindow : Window
 
             if (!Directory.Exists(settings.QuakeFolder))
             {
+                System.Windows.MessageBox.Show(
+                    "Quake folder was moved or deleted.",
+                    "Tiny Quake Launcher",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
                 return;
             }
 
             QuakeFolderTextBox.Text =
                 settings.QuakeFolder;
 
+            restoreMapSelectionCleared =
+                settings.MapSelectionCleared;
+
+            restoreDifficultySelectionCleared =
+                settings.DifficultySelectionCleared;
+
             DetectQuakeInstallation(
                 settings.QuakeFolder);
 
             RestoreSavedSelections(settings);
+
+            // The saved "map cleared" state only applies to
+            // the initial startup restore. After startup,
+            // selecting another episode should use the normal
+            // default map selection again.
+            restoreMapSelectionCleared = false;
+            restoreDifficultySelectionCleared = false;
         }
         catch
         {
@@ -205,14 +232,21 @@ public partial class MainWindow : Window
             settings.MapFileName =
                 selectedMap?.FileName ?? "";
 
+            settings.MapSelectionCleared =
+                selectedMap == null;
+
             if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
             {
                 settings.Difficulty =
                     difficulty.Value;
+
+                settings.DifficultySelectionCleared = false;
             }
             else
             {
                 settings.Difficulty = null;
+
+                settings.DifficultySelectionCleared = true;
             }
 
             settings.ExtraArguments =
@@ -266,7 +300,11 @@ public partial class MainWindow : Window
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(
+        if (settings.MapSelectionCleared)
+        {
+            MapComboBox.SelectedIndex = -1;
+        }
+        else if (!string.IsNullOrWhiteSpace(
             settings.MapFileName))
         {
             MapInfo? map =
@@ -285,7 +323,11 @@ public partial class MainWindow : Window
             }
         }
 
-        if (settings.Difficulty.HasValue)
+        if (settings.DifficultySelectionCleared)
+        {
+            DifficultyComboBox.SelectedIndex = -1;
+        }
+        else if (settings.Difficulty.HasValue)
         {
             Difficulty? difficulty =
                 DifficultyComboBox.Items
@@ -335,7 +377,10 @@ public partial class MainWindow : Window
                 dialog.SelectedPath);
 
             // Default difficulty is set to Normal.
-            DifficultyComboBox.SelectedIndex = 1;
+            if (DifficultyComboBox.Items.Count > 1)
+            {
+                DifficultyComboBox.SelectedIndex = 1;
+            }
         }
     }
 
@@ -395,6 +440,66 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MapComboBox_SizeChanged(
+        object sender,
+        SizeChangedEventArgs e)
+    {
+        UpdateMapToolTip();
+    }
+
+    private void UpdateMapToolTip()
+    {
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
+        if (selectedMap == null)
+        {
+            MapComboBox.ToolTip = null;
+            return;
+        }
+
+        string displayText =
+            $"{selectedMap.FileName} | {selectedMap.Title}";
+
+        if (MapComboBox.ActualWidth <= 0)
+        {
+            MapComboBox.ToolTip = null;
+            return;
+        }
+
+        FormattedText formattedText =
+            new FormattedText(
+                displayText,
+                System.Globalization.CultureInfo.CurrentCulture,
+                System.Windows.FlowDirection.LeftToRight,
+                new Typeface(
+                    MapComboBox.FontFamily,
+                    MapComboBox.FontStyle,
+                    MapComboBox.FontWeight,
+                    MapComboBox.FontStretch),
+                MapComboBox.FontSize,
+                System.Windows.Media.Brushes.Black,
+                VisualTreeHelper.GetDpi(
+                    MapComboBox).PixelsPerDip);
+
+        // Leave room for the ComboBox border, padding,
+        // and drop-down arrow.
+        double availableWidth =
+            MapComboBox.ActualWidth -
+            MapComboBox.Padding.Left -
+            MapComboBox.Padding.Right -
+            35;
+
+        if (formattedText.Width > availableWidth)
+        {
+            MapComboBox.ToolTip = displayText;
+        }
+        else
+        {
+            MapComboBox.ToolTip = null;
+        }
+    }
+
     private void DetectQuakeInstallation(
         string quakeFolder)
     {
@@ -406,6 +511,9 @@ public partial class MainWindow : Window
     private void DetectEngines(string quakeFolder)
     {
         EngineComboBox.Items.Clear();
+
+        DifficultyComboBox.Items.Clear();
+        DifficultyComboBox.SelectedIndex = -1;
 
         List<Engine> engines =
             engineDetector.DetectEngines(quakeFolder);
@@ -420,6 +528,23 @@ public partial class MainWindow : Window
 
         if (EngineComboBox.Items.Count == 0)
         {
+            // No supported engine means the current folder cannot
+            // provide valid episode/map selections either.
+            MissionComboBox.Items.Clear();
+            MissionComboBox.SelectedIndex = -1;
+
+            MapComboBox.Items.Clear();
+            MapComboBox.SelectedIndex = -1;
+            MapComboBox.ToolTip = null;
+
+            DifficultyComboBox.Items.Clear();
+            DifficultyComboBox.SelectedIndex = -1;
+
+            CommandArgumentsTextBox.Text = "";
+
+            StatusText.Text =
+                "No supported Quake engine was found.";
+
             System.Windows.MessageBox.Show(
                 "No supported Quake engine was found.",
                 "Tiny Quake Launcher",
@@ -428,6 +553,8 @@ public partial class MainWindow : Window
 
             return;
         }
+
+        SetupDifficultyOptions();
 
         EngineComboBox.SelectedIndex = 0;
     }
@@ -615,30 +742,34 @@ public partial class MainWindow : Window
             MapComboBox.Items.Add(map);
         }
 
-        if (!isQuake2)
+        if (!restoreMapSelectionCleared)
         {
-            int startIndex =
-                maps.FindIndex(
-                    map => string.Equals(
-                        map.FileName,
-                        "start.bsp",
-                        StringComparison.OrdinalIgnoreCase));
-
-            if (startIndex >= 0)
+            if (!isQuake2)
             {
-                MapComboBox.SelectedIndex =
-                    startIndex;
+                int startIndex =
+                    maps.FindIndex(
+                        map => string.Equals(
+                            map.FileName,
+                            "start.bsp",
+                            StringComparison.OrdinalIgnoreCase));
+
+                if (startIndex >= 0)
+                {
+                    MapComboBox.SelectedIndex =
+                        startIndex;
+                }
+                else if (MapComboBox.Items.Count > 0)
+                {
+                    MapComboBox.SelectedIndex = 0;
+                }
             }
             else if (MapComboBox.Items.Count > 0)
             {
                 MapComboBox.SelectedIndex = 0;
             }
         }
-        else if (MapComboBox.Items.Count > 0)
-        {
-            MapComboBox.SelectedIndex = 0;
-        }
 
+        UpdateMapToolTip();
         UpdateCommandArguments();
     }
 
@@ -677,12 +808,25 @@ public partial class MainWindow : Window
         SelectionChangedEventArgs e)
     {
         DetectMaps();
+
+        if (!restoreMapSelectionCleared &&
+            !restoreDifficultySelectionCleared &&
+            DifficultyComboBox.Items.Count > 1)
+        {
+            DifficultyComboBox.SelectedIndex = 1;
+        }
     }
 
     private void MapComboBox_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
     {
+        if (MapComboBox.SelectedItem is MapInfo)
+        {
+            SaveCurrentSettings();
+        }
+
+        UpdateMapToolTip();
         UpdateCommandArguments();
     }
 
@@ -751,6 +895,30 @@ public partial class MainWindow : Window
         RoutedEventArgs e)
     {
         ExtraArgumentsTextBox.Clear();
+    }
+
+    private void ClearMapButton_Click(
+    object sender,
+    RoutedEventArgs e)
+    {
+        MapComboBox.SelectedIndex = -1;
+
+        MapComboBox.ToolTip = null;
+
+        SaveCurrentSettings();
+
+        UpdateCommandArguments();
+    }
+
+    private void ClearDifficultyButton_Click(
+    object sender,
+    RoutedEventArgs e)
+    {
+        DifficultyComboBox.SelectedIndex = -1;
+
+        SaveCurrentSettings();
+
+        UpdateCommandArguments();
     }
 
     private void CreateDesktopShortcutButton_Click(
@@ -844,6 +1012,8 @@ public partial class MainWindow : Window
                 engine.ExecutablePath;
 
             shortcut.WorkingDirectory =
+                Path.GetDirectoryName(
+                    engine.ExecutablePath) ??
                 QuakeFolderTextBox.Text.Trim();
 
             shortcut.Arguments =
@@ -1200,11 +1370,16 @@ public partial class MainWindow : Window
 
         try
         {
+            string engineDirectory =
+                Path.GetDirectoryName(
+                    engine.ExecutablePath) ??
+                quakeFolder;
+
             ProcessStartInfo startInfo =
                 new ProcessStartInfo
                 {
                     FileName = engine.ExecutablePath,
-                    WorkingDirectory = quakeFolder,
+                    WorkingDirectory = engineDirectory,
                     UseShellExecute = true
                 };
 
@@ -1217,6 +1392,11 @@ public partial class MainWindow : Window
 
             StatusText.Text =
                 $"{engine.Name} is ready with custom settings.";
+
+            if (CloseAfterLaunchCheckBox.IsChecked == true)
+            {
+                Close();
+            }
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
