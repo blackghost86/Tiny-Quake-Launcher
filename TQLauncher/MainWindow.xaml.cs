@@ -129,9 +129,7 @@ public partial class MainWindow : Window
                 settings.CloseAfterLaunch;
 
             // The saved "map cleared" state only applies to
-            // the initial startup restore. After startup,
-            // selecting another episode should use the normal
-            // default map selection again.
+            // the initial startup restore.
             restoreMapSelectionCleared = false;
             restoreDifficultySelectionCleared = false;
         }
