@@ -31,6 +31,10 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 ---------------------------------------------------------------------
+0.9.1:
+- Improved PK3 file detection logic for Quake and Quake II.
+- Close after launch setting will always be remembered.
+
 0.9:
 - Fixed a random crash if Quake folder was moved or deleted.
 - Fixed additional engine files not created in their engine folder.
