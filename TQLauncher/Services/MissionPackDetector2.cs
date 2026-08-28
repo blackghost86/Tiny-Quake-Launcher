@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Linq;
 using System.IO.Compression;
 using TinyQuakeLauncher.Models;
 
@@ -118,6 +119,19 @@ public class MissionPackDetector2
                 continue;
             }
 
+            // Check whether this is a renamed official episode.
+            MissionPack? renamedOfficial =
+                DetectRenamedOfficialEpisode(directory);
+
+            if (renamedOfficial != null)
+            {
+                renamedOfficial.DetectedDirectory =
+                    folderName;
+
+                detected.Add(renamedOfficial);
+                continue;
+            }
+
             detected.Add(
                 new MissionPack
                 {
@@ -130,7 +144,125 @@ public class MissionPackDetector2
                 });
         }
 
-        return detected;
+        // Keep official Quake II episodes together in the
+        // standard episode/mission pack order.
+
+        List<MissionPack> official =
+            new();
+
+        MissionPack? quakeII =
+            detected.FirstOrDefault(
+                missionPack =>
+                    string.Equals(
+                        missionPack.Name,
+                        "Quake II",
+                        StringComparison.OrdinalIgnoreCase));
+
+        MissionPack? reckoning =
+            detected.FirstOrDefault(
+                missionPack =>
+                    string.Equals(
+                        missionPack.Name,
+                        "The Reckoning",
+                        StringComparison.OrdinalIgnoreCase));
+
+        MissionPack? groundZero =
+            detected.FirstOrDefault(
+                missionPack =>
+                    string.Equals(
+                        missionPack.Name,
+                        "Ground Zero",
+                        StringComparison.OrdinalIgnoreCase));
+
+        if (quakeII != null)
+        {
+            official.Add(quakeII);
+        }
+
+        if (reckoning != null)
+        {
+            official.Add(reckoning);
+        }
+
+        if (groundZero != null)
+        {
+            official.Add(groundZero);
+        }
+
+        List<MissionPack> custom =
+            detected
+                .Where(missionPack => !IsOfficialEpisode(missionPack))
+                .ToList();
+
+        official.AddRange(custom);
+
+        return official;
+    }
+
+    private bool IsOfficialEpisode(
+        MissionPack missionPack)
+    {
+        return allMissionPacks.Any(
+            official =>
+                string.Equals(
+                    official.Name,
+                    missionPack.Name,
+                    StringComparison.OrdinalIgnoreCase));
+    }
+
+    private MissionPack? DetectRenamedOfficialEpisode(
+        string folder)
+    {
+        string[] archiveFiles =
+            Directory.GetFiles(
+                folder,
+                "*",
+                SearchOption.TopDirectoryOnly);
+
+        foreach (MissionPack missionPack in allMissionPacks)
+        {
+            // Quake II itself is the base game, not a mission pack.
+
+            if (string.Equals(
+                missionPack.Name,
+                "Quake II",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foreach (string archiveFile in archiveFiles)
+            {
+                string extension =
+                    Path.GetExtension(archiveFile);
+
+                if (!string.Equals(
+                        extension,
+                        ".pk3",
+                        StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(
+                        extension,
+                        ".pak",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                string archiveName =
+                    Path.GetFileNameWithoutExtension(
+                        archiveFile);
+
+                if (string.Equals(
+                    archiveName,
+                    missionPack.PossibleDirectories[0],
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return missionPack;
+                }
+            }
+        }
+
+        return null;
     }
 
     private bool ContainsQuake2Content(

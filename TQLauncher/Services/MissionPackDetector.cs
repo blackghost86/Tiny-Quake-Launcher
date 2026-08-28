@@ -76,7 +76,7 @@ public class MissionPackDetector
         }
 
         // ---------------------------------------------
-        // 1. Detect known Quake episodes/mods.
+        // 1. Detect known Quake episodes/folders.
         // ---------------------------------------------
 
         foreach (MissionPack missionPack in allMissionPacks)
@@ -90,7 +90,7 @@ public class MissionPackDetector
         }
 
         // ---------------------------------------------
-        // 2. Detect unknown Quake episodes/mods.
+        // 2. Detect unknown Quake episodes/folders.
         // ---------------------------------------------
 
         HashSet<string> knownDirectories =
@@ -125,13 +125,13 @@ public class MissionPackDetector
                 continue;
             }
 
-            // Don't add known episode folders.
+            // Don't add known episode folders again.
             if (knownDirectories.Contains(folderName))
             {
                 continue;
             }
 
-            // id1 is the Vanilla Quake game directory.
+            // id1 is the base Quake game directory.
             if (string.Equals(
                 folderName,
                 "id1",
@@ -145,6 +145,7 @@ public class MissionPackDetector
                 continue;
             }
 
+            // Unknown/renamed episode or custom mod.
             detected.Add(
                 new MissionPack
                 {
@@ -163,7 +164,10 @@ public class MissionPackDetector
     private bool ContainsQuakeContent(
         string folder)
     {
+        // ---------------------------------------------
         // Check for PAK files directly in the folder.
+        // ---------------------------------------------
+
         if (Directory.GetFiles(
             folder,
             "*.pak",
@@ -172,58 +176,128 @@ public class MissionPackDetector
             return true;
         }
 
+        // ---------------------------------------------
         // Check for loose BSP maps.
+        // ---------------------------------------------
+
         string mapsFolder =
             Path.Combine(
                 folder,
                 "maps");
 
-        if (Directory.Exists(mapsFolder))
-        {
-            if (Directory.GetFiles(
+        if (Directory.Exists(mapsFolder) &&
+            Directory.GetFiles(
                 mapsFolder,
                 "*.bsp",
                 SearchOption.TopDirectoryOnly).Length > 0)
+        {
+            return true;
+        }
+
+        // ---------------------------------------------
+        // Check PK3 and ZIP archives for BSP maps.
+        // ---------------------------------------------
+
+        string[] archiveFiles =
+            Directory.GetFiles(
+                folder,
+                "*",
+                SearchOption.TopDirectoryOnly);
+
+        foreach (string archiveFile in archiveFiles)
+        {
+            string extension =
+                Path.GetExtension(archiveFile);
+
+            if (!string.Equals(
+                    extension,
+                    ".pk3",
+                    StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(
+                    extension,
+                    ".zip",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (ArchiveContainsQuake1Map(
+                archiveFile))
             {
                 return true;
             }
         }
 
-        // Check for BSP maps inside PK3 files.
-        string[] pk3Files =
-            Directory.GetFiles(
-                folder,
-                "*.pk3",
-                SearchOption.TopDirectoryOnly);
+        return false;
+    }
 
-        foreach (string pk3File in pk3Files)
+    private bool ArchiveContainsQuake1Map(
+        string archiveFile)
+    {
+        try
         {
-            try
+            using ZipArchive archive =
+                ZipFile.OpenRead(archiveFile);
+
+            foreach (ZipArchiveEntry entry in archive.Entries)
             {
-                using ZipArchive archive =
-                    ZipFile.OpenRead(pk3File);
+                string entryPath =
+                    entry.FullName
+                        .Replace('\\', '/')
+                        .TrimStart('/');
 
-                foreach (ZipArchiveEntry entry in archive.Entries)
+                // Remove a leading "./" if present.
+                while (entryPath.StartsWith(
+                    "./",
+                    StringComparison.Ordinal))
                 {
-                    string entryPath =
-                        entry.FullName.Replace('\\', '/');
+                    entryPath =
+                        entryPath.Substring(2);
+                }
 
-                    if (entryPath.StartsWith(
-                            "maps/",
-                            StringComparison.OrdinalIgnoreCase) &&
-                        entryPath.EndsWith(
+                int mapsIndex =
+                    entryPath.LastIndexOf(
+                        "/maps/",
+                        StringComparison.OrdinalIgnoreCase);
+
+                if (mapsIndex >= 0)
+                {
+                    string fileName =
+                        entryPath.Substring(
+                            mapsIndex + 6);
+
+                    if (fileName.EndsWith(
                             ".bsp",
-                            StringComparison.OrdinalIgnoreCase))
+                            StringComparison.OrdinalIgnoreCase) &&
+                        fileName.IndexOf('/') < 0)
+                    {
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (entryPath.StartsWith(
+                        "maps/",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    string fileName =
+                        entryPath.Substring(5);
+
+                    if (fileName.EndsWith(
+                            ".bsp",
+                            StringComparison.OrdinalIgnoreCase) &&
+                        fileName.IndexOf('/') < 0)
                     {
                         return true;
                     }
                 }
             }
-            catch
-            {
-                // Ignore invalid or unreadable PK3 files
-                // and continue checking other content.
-            }
+        }
+        catch
+        {
+            // Ignore invalid or unreadable archives
+            // and continue checking other content.
         }
 
         return false;
