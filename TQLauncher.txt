@@ -33,11 +33,12 @@ Changelog
 ---------------------------------------------------------------------
 0.9:
 - Fixed a random crash if Quake folder was moved or deleted.
-- Fixed difficulty display if there's no valid engine.
 - Fixed additional engine files not created in their engine folder.
 - Added PK3 file detection and improved processing speed.
-- Added an option to close the app after launch.
-- Improved buttons, icons and border colors.
+- Added a checkbox to close the app after launch.
+- Added a tooltip if map name is too long.
+- Cleared saved settings display if there's no valid engine.
+- Improved buttons, icons and several border colors.
 
 0.8:
 - Massive code cleanup and renamed some classes and identifiers.
