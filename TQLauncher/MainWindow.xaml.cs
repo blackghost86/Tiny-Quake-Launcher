@@ -26,6 +26,8 @@ public class LauncherSettings
 
     public bool DifficultySelectionCleared { get; set; }
 
+    public bool CloseAfterLaunch { get; set; }
+
     public string ExtraArguments { get; set; } = "";
 }
 
@@ -122,6 +124,9 @@ public partial class MainWindow : Window
                 settings.QuakeFolder);
 
             RestoreSavedSelections(settings);
+
+            CloseAfterLaunchCheckBox.IsChecked =
+                settings.CloseAfterLaunch;
 
             // The saved "map cleared" state only applies to
             // the initial startup restore. After startup,
@@ -248,6 +253,9 @@ public partial class MainWindow : Window
 
                 settings.DifficultySelectionCleared = true;
             }
+
+            settings.CloseAfterLaunch =
+                CloseAfterLaunchCheckBox.IsChecked == true;
 
             settings.ExtraArguments =
                 ExtraArgumentsTextBox.Text;
@@ -689,11 +697,20 @@ public partial class MainWindow : Window
 
         if (!Directory.Exists(gameFolder))
         {
-            StatusText.Text =
-                $"Episode folder not found:\n{gameFolder}";
+            // A root-level PK3/ZIP mission pack has no game directory.
+            // Read its maps from the main Quake folder.
+            if (string.IsNullOrWhiteSpace(missionPack.GameDirectory))
+            {
+                gameFolder = QuakeFolderTextBox.Text.Trim();
+            }
+            else
+            {
+                StatusText.Text =
+                    $"Episode folder not found:\n{gameFolder}";
 
-            UpdateCommandArguments();
-            return;
+                UpdateCommandArguments();
+                return;
+            }
         }
 
         Engine? engine =
@@ -881,6 +898,13 @@ public partial class MainWindow : Window
         SelectionChangedEventArgs e)
     {
         UpdateCommandArguments();
+    }
+
+    private void CloseAfterLaunchCheckBox_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        SaveCurrentSettings();
     }
 
     private void ExtraArgumentsTextBox_TextChanged(
