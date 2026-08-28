@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using TinyQuakeLauncher.Models;
@@ -49,6 +50,14 @@ public class MapDetector
                 foundMaps);
         }
 
+        foreach (string pk3File in FindPk3Files(gameFolder))
+        {
+            ReadPk3Maps(
+                pk3File,
+                maps,
+                foundMaps);
+        }
+
         AddLooseBspFiles(
             gameFolder,
             maps,
@@ -75,6 +84,38 @@ public class MapDetector
             foreach (string file in Directory.GetFiles(
                 folder,
                 "*.pak",
+                SearchOption.AllDirectories))
+            {
+                if (!result.Contains(
+                    file,
+                    StringComparer.OrdinalIgnoreCase))
+                {
+                    result.Add(file);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore inaccessible folders.
+        }
+
+        return result;
+    }
+
+    // =========================================================
+    // FIND PK3 FILES
+    // =========================================================
+
+    private List<string> FindPk3Files(
+        string folder)
+    {
+        List<string> result = new();
+
+        try
+        {
+            foreach (string file in Directory.GetFiles(
+                folder,
+                "*.pk3",
                 SearchOption.AllDirectories))
             {
                 if (!result.Contains(
@@ -238,9 +279,6 @@ public class MapDetector
 
                 // -------------------------------------------------
                 // Read BSP title.
-                //
-                // If the title cannot be read, the map is still
-                // valid and the filename is used.
                 // -------------------------------------------------
 
                 string title = "";
@@ -279,46 +317,153 @@ public class MapDetector
     }
 
     // =========================================================
+    // READ PK3 MAPS
+    // =========================================================
+
+    private void ReadPk3Maps(
+        string pk3File,
+        List<MapInfo> maps,
+        HashSet<string> foundMaps)
+    {
+        try
+        {
+            using ZipArchive archive =
+                ZipFile.OpenRead(pk3File);
+
+            foreach (ZipArchiveEntry entry in archive.Entries)
+            {
+                string entryName =
+                    entry.FullName.Replace('\\', '/');
+
+                if (!IsMapEntry(entryName))
+                {
+                    continue;
+                }
+
+                string mapName =
+                    Path.GetFileNameWithoutExtension(
+                        entryName);
+
+                if (string.IsNullOrWhiteSpace(mapName))
+                {
+                    continue;
+                }
+
+                string fileName =
+                    mapName + ".bsp";
+
+                if (!foundMaps.Add(fileName))
+                {
+                    continue;
+                }
+
+                string title = "";
+
+                try
+                {
+                    using Stream entryStream =
+                        entry.Open();
+
+                    using MemoryStream bspStream =
+                        new();
+
+                    entryStream.CopyTo(bspStream);
+                    bspStream.Position = 0;
+
+                    title =
+                        ReadBspTitle(
+                            bspStream,
+                            0,
+                            bspStream.Length);
+                }
+                catch
+                {
+                    // The map is still valid even if its title
+                    // cannot be read.
+                }
+
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    title = mapName;
+                }
+
+                maps.Add(
+                    new MapInfo
+                    {
+                        FileName = fileName,
+                        Title = title
+                    });
+            }
+        }
+        catch
+        {
+            // Ignore this PK3 and continue with other files.
+        }
+    }
+
+    // =========================================================
     // PAK ENTRY TEST
     // =========================================================
 
     private bool IsMapEntry(
         string entryName)
     {
+        if (string.IsNullOrWhiteSpace(entryName))
+        {
+            return false;
+        }
+
         string normalized =
-            entryName.Replace(
-                '\\',
-                '/');
+            entryName
+                .Replace('\\', '/')
+                .TrimStart('/');
 
-        int slash =
-            normalized.LastIndexOf('/');
-
-        if (slash < 0)
+        // Remove a leading "./" if the archive uses one.
+        while (normalized.StartsWith(
+            "./",
+            StringComparison.Ordinal))
         {
-            return false;
+            normalized =
+                normalized.Substring(2);
         }
 
-        string directory =
-            normalized.Substring(
-                0,
-                slash);
+        // This keeps detection tolerant of how the PK3 was packed.
 
-        string fileName =
-            normalized.Substring(
-                slash + 1);
+        int mapsIndex =
+            normalized.LastIndexOf(
+                "/maps/",
+                StringComparison.OrdinalIgnoreCase);
 
-        if (!string.Equals(
-            directory,
-            "maps",
-            StringComparison.OrdinalIgnoreCase))
+        if (mapsIndex >= 0)
         {
-            return false;
+            string fileName =
+                normalized.Substring(
+                    mapsIndex + 6);
+
+            return fileName.Length > 4 &&
+                   fileName.EndsWith(
+                       ".bsp",
+                       StringComparison.OrdinalIgnoreCase) &&
+                   fileName.IndexOf('/') < 0;
         }
 
-        return fileName.EndsWith(
-            ".bsp",
-            StringComparison.OrdinalIgnoreCase);
+        if (normalized.StartsWith(
+                "maps/",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            string fileName =
+                normalized.Substring(5);
+
+            return fileName.Length > 4 &&
+                   fileName.EndsWith(
+                       ".bsp",
+                       StringComparison.OrdinalIgnoreCase) &&
+                   fileName.IndexOf('/') < 0;
+        }
+
+        return false;
     }
+
 
     // =========================================================
     // FIXED-LENGTH STRING
@@ -521,7 +666,7 @@ public class MapDetector
     // =========================================================
 
     private string ReadBspTitle(
-        FileStream stream,
+        Stream stream,
         long bspOffset,
         long bspSize)
     {
@@ -983,10 +1128,6 @@ public class MapDetector
             }
 
             // -------------------------------------------------
-            // Quake entity newline:
-            //
-            // "\n"
-            //
             // Replace with a normal space.
             // -------------------------------------------------
 

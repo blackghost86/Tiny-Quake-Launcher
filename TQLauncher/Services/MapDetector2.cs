@@ -12,7 +12,6 @@ public class MapDetector2
 {
     private const int PakHeaderSize = 12;
     private const int PakDirectoryEntrySize = 64;
-
     private const string Quake2BspMagic = "IBSP";
     private const int Quake2BspVersion = 38;
 
@@ -322,13 +321,20 @@ public class MapDetector2
 
                 string title = "";
 
+                // Copy the PK3 entry into a seekable MemoryStream.
                 using Stream entryStream =
                     entry.Open();
 
+                using MemoryStream bspStream =
+                    new();
+
+                entryStream.CopyTo(bspStream);
+                bspStream.Position = 0;
+
                 title =
                     ReadBspTitle(
-                        entryStream,
-                        entry.Length);
+                        bspStream,
+                        bspStream.Length);
 
                 if (string.IsNullOrWhiteSpace(title))
                 {
@@ -355,42 +361,68 @@ public class MapDetector2
 
     private bool IsMapEntry(string entryName)
     {
+        if (string.IsNullOrWhiteSpace(entryName))
+        {
+            return false;
+        }
+
         string normalized =
-            entryName.Replace(
-                '\\',
-                '/');
+            entryName
+                .Replace('\\', '/')
+                .TrimStart('/');
 
-        int slash =
-            normalized.LastIndexOf('/');
-
-        if (slash < 0)
+        // Remove a leading "./" if the archive uses one.
+        while (normalized.StartsWith(
+            "./",
+            StringComparison.Ordinal))
         {
-            return false;
+            normalized =
+                normalized.Substring(2);
         }
 
-        string directory =
-            normalized.Substring(
-                0,
-                slash);
+        // Accept the normal Quake II layout:
+        //
+        // maps/mapname.bsp
+        //
+        // and archives that contain the maps directory
+        // below another directory:
+        //
+        // somefolder/maps/mapname.bsp
+        int mapsIndex =
+            normalized.LastIndexOf(
+                "/maps/",
+                StringComparison.OrdinalIgnoreCase);
 
-        string fileName =
-            normalized.Substring(
-                slash + 1);
-
-        if (!string.Equals(
-            directory,
-            "maps",
-            StringComparison.OrdinalIgnoreCase))
+        if (mapsIndex >= 0)
         {
-            return false;
+            string fileName =
+                normalized.Substring(
+                    mapsIndex + 6);
+
+            return fileName.Length > 4 &&
+                   fileName.EndsWith(
+                       ".bsp",
+                       StringComparison.OrdinalIgnoreCase) &&
+                   fileName.IndexOf('/') < 0;
         }
 
-        return fileName.EndsWith(
-            ".bsp",
-            StringComparison.OrdinalIgnoreCase);
+        if (normalized.StartsWith(
+                "maps/",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            string fileName =
+                normalized.Substring(5);
+
+            return fileName.Length > 4 &&
+                   fileName.EndsWith(
+                       ".bsp",
+                       StringComparison.OrdinalIgnoreCase) &&
+                   fileName.IndexOf('/') < 0;
+        }
+
+        return false;
     }
 
-    // =========================================================
     // FIXED-LENGTH STRING
     // =========================================================
 
