@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.IO.Compression;
 using TinyQuakeLauncher.Models;
 
 namespace TinyQuakeLauncher.Services;
@@ -48,7 +49,7 @@ public class MissionPackDetector2
         }
 
         // ---------------------------------------------
-        // 1. Detect known Quake II episodes.
+        // 1. Detect known Quake II episodes/mods.
         // ---------------------------------------------
 
         foreach (MissionPack missionPack in allMissionPacks)
@@ -136,6 +137,7 @@ public class MissionPackDetector2
         string folder)
     {
         // Check for PAK files directly in the folder.
+
         if (Directory.GetFiles(
             folder,
             "*.pak",
@@ -145,6 +147,7 @@ public class MissionPackDetector2
         }
 
         // Check for loose BSP maps.
+
         string mapsFolder =
             Path.Combine(
                 folder,
@@ -158,6 +161,60 @@ public class MissionPackDetector2
                 SearchOption.TopDirectoryOnly).Length > 0)
             {
                 return true;
+            }
+        }
+
+        // Check for BSP maps inside PK3 files.
+
+        string[] pk3Files =
+            Directory.GetFiles(
+                folder,
+                "*.pk3",
+                SearchOption.TopDirectoryOnly);
+
+        foreach (string pk3File in pk3Files)
+        {
+            try
+            {
+                using ZipArchive archive =
+                    ZipFile.OpenRead(pk3File);
+
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    string entryPath =
+                        entry.FullName.Replace(
+                            '\\',
+                            '/');
+
+                    if (!entryPath.StartsWith(
+                        "maps/",
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (entryPath.EndsWith(
+                        ".bsp",
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (InvalidDataException)
+            {
+                // Ignore invalid/corrupt PK3 files.
+                continue;
+            }
+            catch (IOException)
+            {
+                // Ignore PK3 files that cannot be accessed.
+                continue;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Ignore PK3 files we cannot access.
+                continue;
             }
         }
 

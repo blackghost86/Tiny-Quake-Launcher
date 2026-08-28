@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.IO.Compression;
 using TinyQuakeLauncher.Models;
 
 namespace TinyQuakeLauncher.Services;
@@ -75,7 +76,7 @@ public class MissionPackDetector
         }
 
         // ---------------------------------------------
-        // 1. Detect known Quake episodes.
+        // 1. Detect known Quake episodes/mods.
         // ---------------------------------------------
 
         foreach (MissionPack missionPack in allMissionPacks)
@@ -89,7 +90,7 @@ public class MissionPackDetector
         }
 
         // ---------------------------------------------
-        // 2. Detect unknown Quake episodes.
+        // 2. Detect unknown Quake episodes/mods.
         // ---------------------------------------------
 
         HashSet<string> knownDirectories =
@@ -185,6 +186,43 @@ public class MissionPackDetector
                 SearchOption.TopDirectoryOnly).Length > 0)
             {
                 return true;
+            }
+        }
+
+        // Check for BSP maps inside PK3 files.
+        string[] pk3Files =
+            Directory.GetFiles(
+                folder,
+                "*.pk3",
+                SearchOption.TopDirectoryOnly);
+
+        foreach (string pk3File in pk3Files)
+        {
+            try
+            {
+                using ZipArchive archive =
+                    ZipFile.OpenRead(pk3File);
+
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    string entryPath =
+                        entry.FullName.Replace('\\', '/');
+
+                    if (entryPath.StartsWith(
+                            "maps/",
+                            StringComparison.OrdinalIgnoreCase) &&
+                        entryPath.EndsWith(
+                            ".bsp",
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore invalid or unreadable PK3 files
+                // and continue checking other content.
             }
         }
 
