@@ -4,6 +4,14 @@ namespace TinyQuakeLauncher.Models;
 
 public class Difficulty
 {
+    public static Difficulty None =>
+        new Difficulty
+        {
+            Name = "None",
+            Value = -1,
+            Foreground = System.Windows.Media.Brushes.Black
+        };
+
     public string Name { get; set; } = "";
 
     public int Value { get; set; }
