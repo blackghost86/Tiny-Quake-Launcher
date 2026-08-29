@@ -58,6 +58,10 @@ public class EngineDetector2
                 "Quake II RTX",
                 executablePath),
 
+            "quake2ex_gog.exe" => CreateEngine(
+                "Quake II GOG",
+                executablePath),
+
             _ => null
         };
     }

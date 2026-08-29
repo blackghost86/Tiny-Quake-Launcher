@@ -131,7 +131,7 @@ public class MissionPackDetector
                 continue;
             }
 
-            // id1 is the base Quake game directory.
+            // id1 is the base game directory.
             if (string.Equals(
                 folderName,
                 "id1",
