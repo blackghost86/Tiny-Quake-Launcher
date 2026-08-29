@@ -2,10 +2,11 @@
 A simple launcher for Quake, Quake 2 and their mission packs.
 
 # Features
-- Runs Quake, Quake 2 and custom mods/mission packs.
+- Runs Quake from your desktop or your main Quake directory.
 - Automatic Quake source port detection.
 - Automatic episode/mod detection.
-- Automatic map detection from pak files or custom folders.
+- Automatic map detection from pak/pk3/custom folders.
+- Automatic demo detection.
 - Difficulty settings for any existing map.
 - Command line preview based on custom selection.
 - Extra arguments that can be added manually.
@@ -13,6 +14,7 @@ A simple launcher for Quake, Quake 2 and their mission packs.
 # Features planned
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
 - Quake 2 support - done (v0.7)
+- Demo support for Quake and Quake 2 - done (v0.9.2)
 - Multiplayer support for Quake - work in progress (v1.0)
 - Multiplayer support for Quake 2 - not started (v1.2)
 - Support for other games - not planned yet
