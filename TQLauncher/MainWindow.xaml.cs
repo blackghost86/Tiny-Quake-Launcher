@@ -1,10 +1,12 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using TinyQuakeLauncher.Data;
 using TinyQuakeLauncher.Models;
 using TinyQuakeLauncher.Services;
 
@@ -26,6 +28,8 @@ public class LauncherSettings
 
     public bool DifficultySelectionCleared { get; set; }
 
+    public string DemoFileName { get; set; } = "";
+
     public bool CloseAfterLaunch { get; set; }
 
     public string ExtraArguments { get; set; } = "";
@@ -45,6 +49,9 @@ public partial class MainWindow : Window
 
     private readonly MapDetector2 MapDetector2 = new();
 
+    private readonly DemoDetector demoDetector = new();
+    private readonly DemoDetector2 demoDetector2 = new();
+
     private static readonly string SettingsFolder =
         Path.Combine(
             Environment.GetFolderPath(
@@ -58,6 +65,8 @@ public partial class MainWindow : Window
 
     private bool restoreMapSelectionCleared;
     private bool restoreDifficultySelectionCleared;
+    private bool restoringSavedSelections;
+    private bool demoSelectionActive;
 
     public MainWindow()
     {
@@ -123,7 +132,9 @@ public partial class MainWindow : Window
             DetectQuakeInstallation(
                 settings.QuakeFolder);
 
+            restoringSavedSelections = true;
             RestoreSavedSelections(settings);
+            restoringSavedSelections = false;
 
             CloseAfterLaunchCheckBox.IsChecked =
                 settings.CloseAfterLaunch;
@@ -252,6 +263,12 @@ public partial class MainWindow : Window
                 settings.DifficultySelectionCleared = true;
             }
 
+            Demo? selectedDemo =
+                DemoComboBox.SelectedItem as Demo;
+
+            settings.DemoFileName =
+                selectedDemo?.FileName ?? "";
+
             settings.CloseAfterLaunch =
                 CloseAfterLaunchCheckBox.IsChecked == true;
 
@@ -308,7 +325,7 @@ public partial class MainWindow : Window
 
         if (settings.MapSelectionCleared)
         {
-            MapComboBox.SelectedIndex = -1;
+            MapComboBox.SelectedIndex = 0;
         }
         else if (!string.IsNullOrWhiteSpace(
             settings.MapFileName))
@@ -331,7 +348,7 @@ public partial class MainWindow : Window
 
         if (settings.DifficultySelectionCleared)
         {
-            DifficultyComboBox.SelectedIndex = -1;
+            DifficultyComboBox.SelectedIndex = 0;
         }
         else if (settings.Difficulty.HasValue)
         {
@@ -346,6 +363,23 @@ public partial class MainWindow : Window
             {
                 DifficultyComboBox.SelectedItem =
                     difficulty;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(settings.DemoFileName))
+        {
+            Demo? demo =
+                DemoComboBox.Items
+                    .OfType<Demo>()
+                    .FirstOrDefault(
+                        item => string.Equals(
+                            item.FileName,
+                            settings.DemoFileName,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (demo != null)
+            {
+                DemoComboBox.SelectedItem = demo;
             }
         }
 
@@ -385,7 +419,7 @@ public partial class MainWindow : Window
             // Default difficulty is set to Normal.
             if (DifficultyComboBox.Items.Count > 1)
             {
-                DifficultyComboBox.SelectedIndex = 1;
+                DifficultyComboBox.SelectedIndex = 2;
             }
         }
     }
@@ -546,6 +580,9 @@ public partial class MainWindow : Window
             DifficultyComboBox.Items.Clear();
             DifficultyComboBox.SelectedIndex = -1;
 
+            DemoComboBox.Items.Clear();
+            DemoComboBox.SelectedIndex = -1;
+
             CommandArgumentsTextBox.Text = "";
 
             StatusText.Text =
@@ -607,6 +644,7 @@ public partial class MainWindow : Window
         }
 
         DetectMaps();
+        DetectDemos();
     }
 
     private static bool IsQuake2Engine(Engine? engine)
@@ -627,6 +665,9 @@ public partial class MainWindow : Window
                    StringComparison.OrdinalIgnoreCase)
             || engine.Name.Equals(
                    "Quake II RTX",
+                   StringComparison.OrdinalIgnoreCase)
+            || engine.Name.Equals(
+                   "Quake II GOG",
                    StringComparison.OrdinalIgnoreCase);
     }
 
@@ -674,6 +715,7 @@ public partial class MainWindow : Window
     private void DetectMaps()
     {
         MapComboBox.Items.Clear();
+        MapComboBox.Items.Add(MapInfo.None);
 
         MissionPack? missionPack =
             MissionComboBox.SelectedItem as MissionPack;
@@ -770,21 +812,94 @@ public partial class MainWindow : Window
 
                 if (startIndex >= 0)
                 {
+                    // Index 0 is "None", so real maps start at index 1.
                     MapComboBox.SelectedIndex =
-                        startIndex;
+                        startIndex + 1;
                 }
-                else if (MapComboBox.Items.Count > 0)
+                else if (MapComboBox.Items.Count > 1)
+                {
+                    MapComboBox.SelectedIndex = 1;
+                }
+                else
                 {
                     MapComboBox.SelectedIndex = 0;
                 }
             }
-            else if (MapComboBox.Items.Count > 0)
+            else if (MapComboBox.Items.Count > 1)
+            {
+                MapComboBox.SelectedIndex = 1;
+            }
+            else
             {
                 MapComboBox.SelectedIndex = 0;
             }
         }
 
         UpdateMapToolTip();
+        UpdateCommandArguments();
+    }
+
+    private void DetectDemos()
+    {
+        demoSelectionActive = false;
+        MapComboBox.IsEnabled = true;
+        DifficultyComboBox.IsEnabled = true;
+
+        DemoComboBox.Items.Clear();
+
+        DemoComboBox.Items.Add(
+            new Demo
+            {
+                Name = "None",
+                FileName = "",
+                GameDirectory = ""
+            });
+
+        MissionPack? missionPack =
+            MissionComboBox.SelectedItem as MissionPack;
+
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
+
+        if (missionPack == null || engine == null)
+        {
+            DemoComboBox.SelectedIndex = 0;
+            return;
+        }
+
+        string gameFolder =
+            GetEpisodeFolder(missionPack);
+
+        if (string.IsNullOrWhiteSpace(gameFolder))
+        {
+            DemoComboBox.SelectedIndex = 0;
+            return;
+        }
+
+        if (!Directory.Exists(gameFolder))
+        {
+            if (string.IsNullOrWhiteSpace(missionPack.GameDirectory))
+            {
+                gameFolder = QuakeFolderTextBox.Text.Trim();
+            }
+            else
+            {
+                DemoComboBox.SelectedIndex = 0;
+                return;
+            }
+        }
+
+        List<Demo> demos =
+            IsQuake2Engine(engine)
+                ? demoDetector2.DetectDemos(gameFolder)
+                : demoDetector.DetectDemos(gameFolder);
+
+        foreach (Demo demo in demos)
+        {
+            DemoComboBox.Items.Add(demo);
+        }
+
+        DemoComboBox.SelectedIndex = 0;
         UpdateCommandArguments();
     }
 
@@ -823,12 +938,13 @@ public partial class MainWindow : Window
         SelectionChangedEventArgs e)
     {
         DetectMaps();
+        DetectDemos();
 
         if (!restoreMapSelectionCleared &&
             !restoreDifficultySelectionCleared &&
-            DifficultyComboBox.Items.Count > 1)
+            DifficultyComboBox.Items.Count > 2)
         {
-            DifficultyComboBox.SelectedIndex = 1;
+            DifficultyComboBox.SelectedIndex = 2;
         }
     }
 
@@ -855,6 +971,7 @@ public partial class MainWindow : Window
     private void SetupDifficultyOptions()
     {
         DifficultyComboBox.Items.Clear();
+        DifficultyComboBox.Items.Add(Difficulty.None);
 
         DifficultyComboBox.Items.Add(
             new Difficulty
@@ -898,6 +1015,45 @@ public partial class MainWindow : Window
         UpdateCommandArguments();
     }
 
+    private void DemoComboBox_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        demoSelectionActive =
+            DemoComboBox.SelectedItem is Demo selectedDemo &&
+            !string.IsNullOrWhiteSpace(selectedDemo.FileName);
+
+        MapComboBox.IsEnabled =
+            !demoSelectionActive;
+
+        DifficultyComboBox.IsEnabled =
+            !demoSelectionActive;
+
+        ClearMapButton.IsEnabled =
+            !demoSelectionActive;
+
+        ClearDifficultyButton.IsEnabled =
+            !demoSelectionActive;
+
+        MapLabel.Foreground =
+            demoSelectionActive
+                ? System.Windows.Media.Brushes.DarkGray
+                : System.Windows.SystemColors.ControlTextBrush;
+
+        DifficultyLabel.Foreground =
+            demoSelectionActive
+                ? System.Windows.Media.Brushes.DarkGray
+                : System.Windows.SystemColors.ControlTextBrush;
+
+        if (!restoringSavedSelections &&
+            DemoComboBox.SelectedItem is Demo)
+        {
+            SaveCurrentSettings();
+        }
+
+        UpdateCommandArguments();
+    }
+
     private void CloseAfterLaunchCheckBox_Click(
         object sender,
         RoutedEventArgs e)
@@ -923,7 +1079,7 @@ public partial class MainWindow : Window
     object sender,
     RoutedEventArgs e)
     {
-        MapComboBox.SelectedIndex = -1;
+        MapComboBox.SelectedIndex = 0;
 
         MapComboBox.ToolTip = null;
 
@@ -936,7 +1092,32 @@ public partial class MainWindow : Window
     object sender,
     RoutedEventArgs e)
     {
-        DifficultyComboBox.SelectedIndex = -1;
+        DifficultyComboBox.SelectedIndex = 0;
+
+        SaveCurrentSettings();
+
+        UpdateCommandArguments();
+    }
+
+    private void ClearDemoButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        DemoComboBox.SelectedIndex = 0;
+
+        demoSelectionActive = false;
+
+        MapComboBox.IsEnabled = true;
+        DifficultyComboBox.IsEnabled = true;
+
+        ClearMapButton.IsEnabled = true;
+        ClearDifficultyButton.IsEnabled = true;
+
+        MapLabel.Foreground =
+            System.Windows.SystemColors.ControlTextBrush;
+
+        DifficultyLabel.Foreground =
+            System.Windows.SystemColors.ControlTextBrush;
 
         SaveCurrentSettings();
 
@@ -1103,6 +1284,230 @@ public partial class MainWindow : Window
                "\"";
     }
 
+    private Demo? GetSelectedDemo()
+    {
+        if (!demoSelectionActive)
+        {
+            return null;
+        }
+
+        Demo? demo =
+            DemoComboBox.SelectedItem as Demo;
+
+        if (demo == null ||
+            string.IsNullOrWhiteSpace(demo.FileName))
+        {
+            return null;
+        }
+
+        return demo;
+    }
+
+    private string GetDemoGameFolder(
+        MissionPack? missionPack)
+    {
+        if (missionPack != null)
+        {
+            string folder =
+                GetEpisodeFolder(missionPack);
+
+            if (!string.IsNullOrWhiteSpace(folder) &&
+                Directory.Exists(folder))
+            {
+                return folder;
+            }
+        }
+
+        return QuakeFolderTextBox.Text.Trim();
+    }
+
+    private void PrepareDemoForLaunch(
+        Demo demo,
+        string gameFolder)
+    {
+        if (demo.ResourceType ==
+            DemoResourceType.Folder)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(demo.ResourcePath))
+        {
+            throw new InvalidOperationException(
+                "The selected demo has no source archive path.");
+        }
+
+        if (!File.Exists(demo.ResourcePath))
+        {
+            throw new FileNotFoundException(
+                "The archive containing the selected demo could not be found.",
+                demo.ResourcePath);
+        }
+
+        string demosFolder =
+            Path.Combine(gameFolder, "demos");
+
+        Directory.CreateDirectory(demosFolder);
+
+        string destination =
+            Path.Combine(demosFolder, demo.FileName);
+
+        if (demo.ResourceType == DemoResourceType.Pk3)
+        {
+            ExtractDemoFromZip(
+                demo.ResourcePath,
+                demo.FileName,
+                destination);
+        }
+        else if (demo.ResourceType == DemoResourceType.Pak)
+        {
+            ExtractDemoFromPak(
+                demo.ResourcePath,
+                demo.FileName,
+                destination);
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Unknown demo resource type.");
+        }
+    }
+
+    private static void ExtractDemoFromZip(
+        string archivePath,
+        string fileName,
+        string destination)
+    {
+        using ZipArchive archive =
+            ZipFile.OpenRead(archivePath);
+
+        ZipArchiveEntry? entry =
+            archive.Entries.FirstOrDefault(
+                item =>
+                    string.Equals(
+                        Path.GetFileName(item.FullName),
+                        fileName,
+                        StringComparison.OrdinalIgnoreCase));
+
+        if (entry == null)
+        {
+            throw new FileNotFoundException(
+                "The selected demo could not be found inside the PK3/ZIP archive.",
+                fileName);
+        }
+
+        using Stream input = entry.Open();
+        using FileStream output = File.Create(destination);
+        input.CopyTo(output);
+    }
+
+    private static void ExtractDemoFromPak(
+        string pakPath,
+        string fileName,
+        string destination)
+    {
+        using FileStream stream = File.OpenRead(pakPath);
+        using BinaryReader reader = new(stream);
+
+        if (stream.Length < 12)
+        {
+            throw new InvalidDataException(
+                "The PAK file is too small.");
+        }
+
+        string magic =
+            System.Text.Encoding.ASCII.GetString(
+                reader.ReadBytes(4));
+
+        if (!string.Equals(
+            magic,
+            "PACK",
+            StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                "The selected archive is not a valid Quake PAK file.");
+        }
+
+        int directoryOffset = reader.ReadInt32();
+        int directoryLength = reader.ReadInt32();
+
+        if (directoryOffset < 0 ||
+            directoryLength < 0 ||
+            directoryLength % 64 != 0 ||
+            directoryOffset > stream.Length ||
+            directoryLength > stream.Length - directoryOffset)
+        {
+            throw new InvalidDataException(
+                "The PAK directory is invalid.");
+        }
+
+        stream.Position = directoryOffset;
+
+        int entryCount = directoryLength / 64;
+
+        for (int i = 0; i < entryCount; i++)
+        {
+            byte[] nameBytes = reader.ReadBytes(56);
+
+            if (nameBytes.Length != 56)
+            {
+                break;
+            }
+
+            string entryName = DecodePakCString(nameBytes);
+            int entryOffset = reader.ReadInt32();
+            int entryLength = reader.ReadInt32();
+
+            if (!string.Equals(
+                Path.GetFileName(entryName),
+                fileName,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (entryOffset < 0 ||
+                entryLength <= 0 ||
+                entryOffset > stream.Length ||
+                entryLength > stream.Length - entryOffset)
+            {
+                throw new InvalidDataException(
+                    "The selected demo entry is invalid.");
+            }
+
+            stream.Position = entryOffset;
+            byte[] data = reader.ReadBytes(entryLength);
+
+            if (data.Length != entryLength)
+            {
+                throw new EndOfStreamException(
+                    "The selected demo could not be read completely from the PAK.");
+            }
+
+            File.WriteAllBytes(destination, data);
+            return;
+        }
+
+        throw new FileNotFoundException(
+            "The selected demo could not be found inside the PAK archive.",
+            fileName);
+    }
+
+    private static string DecodePakCString(byte[] bytes)
+    {
+        int length = 0;
+
+        while (length < bytes.Length && bytes[length] != 0)
+        {
+            length++;
+        }
+
+        return System.Text.Encoding.ASCII.GetString(
+            bytes,
+            0,
+            length);
+    }
+
     private List<string> BuildLaunchArguments()
     {
         Engine? engine =
@@ -1121,6 +1526,31 @@ public partial class MainWindow : Window
         MissionPack? missionPack =
             MissionComboBox.SelectedItem as MissionPack;
 
+        Demo? selectedDemo =
+            GetSelectedDemo();
+
+        List<string> arguments = new();
+
+        if (missionPack != null &&
+            !string.IsNullOrWhiteSpace(
+                missionPack.GameDirectory))
+        {
+            arguments.Add("-game");
+            arguments.Add(missionPack.GameDirectory);
+        }
+
+        if (selectedDemo != null)
+        {
+            arguments.Add("+playdemo");
+            arguments.Add(selectedDemo.FileName);
+
+            arguments.AddRange(
+                ParseExtraArguments(
+                    ExtraArgumentsTextBox.Text));
+
+            return arguments;
+        }
+
         MapInfo? selectedMap =
             MapComboBox.SelectedItem as MapInfo;
 
@@ -1131,16 +1561,6 @@ public partial class MainWindow : Window
             mapName =
                 Path.GetFileNameWithoutExtension(
                     selectedMap.FileName);
-        }
-
-        List<string> arguments = new();
-
-        if (missionPack != null &&
-            !string.IsNullOrWhiteSpace(
-                missionPack.GameDirectory))
-        {
-            arguments.Add("-game");
-            arguments.Add(missionPack.GameDirectory);
         }
 
         if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
@@ -1167,17 +1587,8 @@ public partial class MainWindow : Window
         MissionPack? missionPack =
             MissionComboBox.SelectedItem as MissionPack;
 
-        MapInfo? selectedMap =
-            MapComboBox.SelectedItem as MapInfo;
-
-        string? mapName = null;
-
-        if (selectedMap != null)
-        {
-            mapName =
-                Path.GetFileNameWithoutExtension(
-                    selectedMap.FileName);
-        }
+        Demo? selectedDemo =
+            GetSelectedDemo();
 
         List<string> arguments = new();
 
@@ -1196,6 +1607,31 @@ public partial class MainWindow : Window
             arguments.Add(missionPack.GameDirectory);
         }
 
+        // Quake II uses +map for demos.
+        if (selectedDemo != null)
+        {
+            arguments.Add("+map");
+            arguments.Add(selectedDemo.FileName);
+
+            arguments.AddRange(
+                ParseExtraArguments(
+                    ExtraArgumentsTextBox.Text));
+
+            return arguments;
+        }
+
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
+        string? mapName = null;
+
+        if (selectedMap != null)
+        {
+            mapName =
+                Path.GetFileNameWithoutExtension(
+                    selectedMap.FileName);
+        }
+
         if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
         {
             arguments.Add("+set");
@@ -1209,7 +1645,6 @@ public partial class MainWindow : Window
             arguments.Add(mapName);
         }
 
-        // Manual extra arguments remain at the end.
         arguments.AddRange(
             ParseExtraArguments(
                 ExtraArgumentsTextBox.Text));
@@ -1387,11 +1822,31 @@ public partial class MainWindow : Window
             return;
         }
 
-        List<string> arguments =
-            BuildLaunchArguments();
+        Demo? selectedDemo =
+            GetSelectedDemo();
 
         try
         {
+            if (selectedDemo != null)
+            {
+                string demoGameFolder =
+                    GetDemoGameFolder(missionPack);
+
+                if (string.IsNullOrWhiteSpace(demoGameFolder) ||
+                    !Directory.Exists(demoGameFolder))
+                {
+                    throw new DirectoryNotFoundException(
+                        "The game directory for the selected demo could not be found.");
+                }
+
+                PrepareDemoForLaunch(
+                    selectedDemo,
+                    demoGameFolder);
+            }
+
+            List<string> arguments =
+                BuildLaunchArguments();
+
             string engineDirectory =
                 Path.GetDirectoryName(
                     engine.ExecutablePath) ??
