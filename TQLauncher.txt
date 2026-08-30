@@ -33,6 +33,7 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 ----------------------------------------------------------------------
+
 0.9.3:
 - Added a color for Easy difficulty (blue) since it was missing one.
 - Added a tooltip for demo names if too long.
