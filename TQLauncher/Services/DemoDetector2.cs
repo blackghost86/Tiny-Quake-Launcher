@@ -87,9 +87,12 @@ public class DemoDetector2
         return demos
             .GroupBy(
                 demo =>
-                    $"{demo.ResourceType}|{demo.GameDirectory}|{demo.FileName}",
+                    $"{demo.FileName}|{demo.MapFileName}|{demo.MapTitle}",
                 StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.First())
+            .Select(group =>
+                group
+                    .OrderBy(GetResourcePriority)
+                    .First())
             .OrderBy(
                 demo => demo.Name,
                 StringComparer.OrdinalIgnoreCase)
@@ -471,6 +474,9 @@ public class DemoDetector2
     private static void SetDemoName(
         Demo demo)
     {
+        demo.MapTitle =
+            CapitalizeFirstLetter(demo.MapTitle);
+
         demo.Name =
             string.IsNullOrWhiteSpace(
                 demo.MapTitle)
@@ -479,7 +485,7 @@ public class DemoDetector2
     }
 
     // =============================================================
-    // Quake II DM2 reader
+    // Quake 2 DM2 reader
     // =============================================================
 
     private Demo? ReadDm2Info(
@@ -635,7 +641,7 @@ public class DemoDetector2
     }
 
     // =============================================================
-    // Quake II map title
+    // Quake 2 map title
     // =============================================================
 
     private static string ReadQuake2MapTitle(
@@ -693,6 +699,34 @@ public class DemoDetector2
         return result
             .ToString()
             .Trim();
+    }
+
+    // =============================================================
+    // Display helpers
+    // =============================================================
+
+    private static string CapitalizeFirstLetter(
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        return char.ToUpperInvariant(value[0]) +
+               value[1..];
+    }
+
+    private static int GetResourcePriority(
+    Demo demo)
+    {
+        return demo.ResourceType switch
+        {
+            DemoResourceType.Folder => 0,
+            DemoResourceType.Pak => 1,
+            DemoResourceType.Pk3 => 2,
+            _ => 3
+        };
     }
 
     // =============================================================

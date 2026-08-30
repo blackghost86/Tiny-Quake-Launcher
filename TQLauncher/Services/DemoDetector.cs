@@ -1331,7 +1331,7 @@ public class DemoDetector
             string.IsNullOrWhiteSpace(
                 info.MapTitle)
                 ? fileName
-                : info.MapTitle;
+                : CapitalizeFirstLetter(info.MapTitle);
 
         return new Demo
         {
@@ -1348,7 +1348,7 @@ public class DemoDetector
                 info.MapFileName,
 
             MapTitle =
-                info.MapTitle,
+                CapitalizeFirstLetter(info.MapTitle),
 
             ResourceType =
                 resourceType,
@@ -1526,6 +1526,18 @@ public class DemoDetector
         }
 
         return " ";
+    }
+
+    private static string CapitalizeFirstLetter(
+    string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        return char.ToUpperInvariant(value[0]) +
+               value[1..];
     }
 
     // =============================================================
