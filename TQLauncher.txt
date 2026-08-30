@@ -32,14 +32,14 @@ Prerequisites
 Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
----------------------------------------------------------------------
+----------------------------------------------------------------------
 0.9.3:
 - Added a color for Easy difficulty (blue) since it was missing one.
 - Added a tooltip for demo names if too long.
 - Fixed duplicated demo names in drop-down list for Quake 2.
 - Fixed demo names if first letter is not capitalized.
-- Fixed the color for map and difficulty when demo is selected.
-- Fixed drop-down lists when an invalid folder is detected.
+- Fixed color for map and difficulty when demo is selected.
+- Fixed drop-down lists if no valid engine is detected.
 - Renamed extra arguments tooltip.
 
 0.9.2:
