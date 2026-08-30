@@ -978,7 +978,7 @@ public partial class MainWindow : Window
             {
                 Name = "Easy",
                 Value = 0,
-                Foreground = HexBrush("#000000")
+                Foreground = HexBrush("#3C3CE8")
             });
 
         DifficultyComboBox.Items.Add(
@@ -1563,7 +1563,9 @@ public partial class MainWindow : Window
                     selectedMap.FileName);
         }
 
-        if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
+        //Quake difficulty
+        if (DifficultyComboBox.SelectedItem is Difficulty difficulty &&
+            difficulty.Value >= 0)
         {
             arguments.Add("+skill");
             arguments.Add(difficulty.Value.ToString());
@@ -1592,7 +1594,7 @@ public partial class MainWindow : Window
 
         List<string> arguments = new();
 
-        // Quake II uses +set game for mission packs/mods.
+        // Quake 2 uses +set game for mission packs/mods.
         // baseq2 is the default game directory.
         if (missionPack != null &&
             !string.IsNullOrWhiteSpace(
@@ -1607,7 +1609,7 @@ public partial class MainWindow : Window
             arguments.Add(missionPack.GameDirectory);
         }
 
-        // Quake II uses +map for demos.
+        // Quake 2 uses +map for demos.
         if (selectedDemo != null)
         {
             arguments.Add("+map");
@@ -1632,7 +1634,9 @@ public partial class MainWindow : Window
                     selectedMap.FileName);
         }
 
-        if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
+        //Quake 2 difficulty
+        if (DifficultyComboBox.SelectedItem is Difficulty difficulty &&
+            difficulty.Value >= 0)
         {
             arguments.Add("+set");
             arguments.Add("skill");
