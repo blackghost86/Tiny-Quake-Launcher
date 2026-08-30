@@ -303,17 +303,35 @@
 
                     <!-- Clear extra arguments -->
 
-                    <Button
-                        x:Name="ClearExtraArgumentsButton"
-                        Width="38"
-                        Height="26"
-                        Margin="0,0,0,3"
-                        Content="✖"
-                        FontSize="15"
-                        Foreground="Red"
-                        BorderBrush="#999999"
-                        ToolTip="Clear extra arguments"
-                        Click="ClearExtraArgumentsButton_Click"/>
+                <Button
+                    x:Name="ClearExtraArgumentsButton"
+                    Width="38"
+                    Height="26"
+                    Margin="0,0,0,3"
+                    Content="✖"
+                    FontSize="15"
+                    BorderBrush="#999999"
+                    ToolTip="Clear extra arguments"
+                    Click="ClearExtraArgumentsButton_Click">
+                        
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter
+                                Property="Foreground"
+                                Value="Red"/>
+
+                            <Style.Triggers>
+                                <Trigger
+                                    Property="IsEnabled"
+                                    Value="False">
+                                    <Setter
+                                    Property="Foreground"
+                                    Value="DarkGray"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
 
                     <!-- Desktop shortcut -->
 
@@ -378,7 +396,7 @@
                 VerticalAlignment="Center"/>
             <TextBlock
                 Grid.Column="1"
-                Text="v0.9.3"
+                Text="v0.9.4"
                 Foreground="#B0B0B0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"/>

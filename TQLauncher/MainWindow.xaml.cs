@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using TinyQuakeLauncher.Data;
+using TinyQuakeLauncher.Games;
 using TinyQuakeLauncher.Models;
 using TinyQuakeLauncher.Services;
 
@@ -17,6 +18,8 @@ public class LauncherSettings
     public string QuakeFolder { get; set; } = "";
 
     public string EnginePath { get; set; } = "";
+
+    public QuakeGame EngineGame { get; set; } = QuakeGame.Quake1;
 
     public string MissionPackDirectory { get; set; } = "";
 
@@ -71,6 +74,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        ClearExtraArgumentsButton.IsEnabled = false;
 
         Closing += MainWindow_Closing;
 
@@ -234,6 +239,9 @@ public partial class MainWindow : Window
             settings.EnginePath =
                 engine?.ExecutablePath ?? "";
 
+            settings.EngineGame =
+                engine?.Game ?? QuakeGame.Quake1;
+
             MissionPack? missionPack =
                 MissionComboBox.SelectedItem as MissionPack;
 
@@ -247,7 +255,8 @@ public partial class MainWindow : Window
                 selectedMap?.FileName ?? "";
 
             settings.MapSelectionCleared =
-                selectedMap == null;
+                selectedMap == null ||
+                string.IsNullOrWhiteSpace(selectedMap.FileName);
 
             if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
             {
@@ -295,7 +304,8 @@ public partial class MainWindow : Window
                         item => string.Equals(
                             item.ExecutablePath,
                             settings.EnginePath,
-                            StringComparison.OrdinalIgnoreCase));
+                            StringComparison.OrdinalIgnoreCase) &&
+                        item.Game == settings.EngineGame);
 
             if (engine != null)
             {
@@ -545,6 +555,11 @@ public partial class MainWindow : Window
     {
         DetectEngines(quakeFolder);
 
+        if (EngineComboBox.Items.Count == 0)
+        {
+            return;
+        }
+
         DetectMissionPacks(quakeFolder);
     }
 
@@ -569,7 +584,7 @@ public partial class MainWindow : Window
         if (EngineComboBox.Items.Count == 0)
         {
             // No supported engine means the current folder cannot
-            // provide valid episode/map selections either.
+            // provide valid episode/map/demo selections either.
             MissionComboBox.Items.Clear();
             MissionComboBox.SelectedIndex = -1;
 
@@ -581,7 +596,11 @@ public partial class MainWindow : Window
             DifficultyComboBox.SelectedIndex = -1;
 
             DemoComboBox.Items.Clear();
+            DemoComboBox.SelectedItem = null;
             DemoComboBox.SelectedIndex = -1;
+            DemoComboBox.ToolTip = null;
+
+            demoSelectionActive = false;
 
             CommandArgumentsTextBox.Text = "";
 
@@ -611,7 +630,7 @@ public partial class MainWindow : Window
 
         List<MissionPack> missionPacks;
 
-        if (IsQuake2Engine(engine))
+        if (engine?.Game == QuakeGame.Quake2)
         {
             missionPacks =
                 missionPackDetector2
@@ -645,30 +664,6 @@ public partial class MainWindow : Window
 
         DetectMaps();
         DetectDemos();
-    }
-
-    private static bool IsQuake2Engine(Engine? engine)
-    {
-        if (engine == null)
-        {
-            return false;
-        }
-
-        return engine.Name.Equals(
-                   "Yamagi Quake II",
-                   StringComparison.OrdinalIgnoreCase)
-            || engine.Name.Equals(
-                   "Q2Pro",
-                   StringComparison.OrdinalIgnoreCase)
-            || engine.Name.Equals(
-                   "KMQuake II",
-                   StringComparison.OrdinalIgnoreCase)
-            || engine.Name.Equals(
-                   "Quake II RTX",
-                   StringComparison.OrdinalIgnoreCase)
-            || engine.Name.Equals(
-                   "Quake II GOG",
-                   StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetEpisodeFolder(MissionPack missionPack)
@@ -757,7 +752,7 @@ public partial class MainWindow : Window
             EngineComboBox.SelectedItem as Engine;
 
         bool isQuake2 =
-            IsQuake2Engine(engine);
+            engine?.Game == QuakeGame.Quake2;
 
         List<MapInfo> maps;
 
@@ -890,7 +885,7 @@ public partial class MainWindow : Window
         }
 
         List<Demo> demos =
-            IsQuake2Engine(engine)
+            engine?.Game == QuakeGame.Quake2
                 ? demoDetector2.DetectDemos(gameFolder)
                 : demoDetector.DetectDemos(gameFolder);
 
@@ -930,7 +925,20 @@ public partial class MainWindow : Window
         object sender,
         SelectionChangedEventArgs e)
     {
-        UpdateCommandArguments();
+        if (EngineComboBox.SelectedItem is not Engine)
+        {
+            return;
+        }
+
+        if (!restoringSavedSelections)
+        {
+            DetectMissionPacks(
+                QuakeFolderTextBox.Text.Trim());
+        }
+        else
+        {
+            UpdateCommandArguments();
+        }
     }
 
     private void MissionComboBox_SelectionChanged(
@@ -958,6 +966,11 @@ public partial class MainWindow : Window
         }
 
         UpdateMapToolTip();
+
+        ClearMapButton.IsEnabled =
+            !demoSelectionActive &&
+            MapComboBox.SelectedIndex > 0;
+
         UpdateCommandArguments();
     }
 
@@ -1006,12 +1019,17 @@ public partial class MainWindow : Window
             });
 
         DifficultyComboBox.SelectedIndex = -1;
+        ClearDifficultyButton.IsEnabled = false;
     }
 
     private void DifficultyComboBox_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
     {
+        ClearDifficultyButton.IsEnabled =
+            !demoSelectionActive &&
+            DifficultyComboBox.SelectedIndex > 0;
+
         UpdateCommandArguments();
     }
 
@@ -1023,6 +1041,9 @@ public partial class MainWindow : Window
             DemoComboBox.SelectedItem is Demo selectedDemo &&
             !string.IsNullOrWhiteSpace(selectedDemo.FileName);
 
+        ClearDemoButton.IsEnabled =
+            demoSelectionActive;
+
         MapComboBox.IsEnabled =
             !demoSelectionActive;
 
@@ -1030,10 +1051,12 @@ public partial class MainWindow : Window
             !demoSelectionActive;
 
         ClearMapButton.IsEnabled =
-            !demoSelectionActive;
+            !demoSelectionActive &&
+            MapComboBox.SelectedIndex > 0;
 
         ClearDifficultyButton.IsEnabled =
-            !demoSelectionActive;
+            !demoSelectionActive &&
+            DifficultyComboBox.SelectedIndex > 0;
 
         MapLabel.Foreground =
             demoSelectionActive
@@ -1065,6 +1088,10 @@ public partial class MainWindow : Window
         object sender,
         TextChangedEventArgs e)
     {
+        ClearExtraArgumentsButton.IsEnabled =
+            !string.IsNullOrWhiteSpace(
+                ExtraArgumentsTextBox.Text);
+
         UpdateCommandArguments();
     }
 
@@ -1076,12 +1103,14 @@ public partial class MainWindow : Window
     }
 
     private void ClearMapButton_Click(
-    object sender,
-    RoutedEventArgs e)
+        object sender,
+        RoutedEventArgs e)
     {
         MapComboBox.SelectedIndex = 0;
 
         MapComboBox.ToolTip = null;
+
+        DifficultyComboBox.SelectedIndex = 0;
 
         SaveCurrentSettings();
 
@@ -1089,10 +1118,12 @@ public partial class MainWindow : Window
     }
 
     private void ClearDifficultyButton_Click(
-    object sender,
-    RoutedEventArgs e)
+        object sender,
+        RoutedEventArgs e)
     {
         DifficultyComboBox.SelectedIndex = 0;
+
+        ClearDifficultyButton.IsEnabled = false;
 
         SaveCurrentSettings();
 
@@ -1231,7 +1262,7 @@ public partial class MainWindow : Window
             shortcut.Save();
 
             StatusText.Text =
-                "Desktop shortcut created.";
+                "Desktop shortcut created successfully.";
 
             System.Windows.MessageBox.Show(
                 "Desktop shortcut created successfully.",
@@ -1513,7 +1544,7 @@ public partial class MainWindow : Window
         Engine? engine =
             EngineComboBox.SelectedItem as Engine;
 
-        if (IsQuake2Engine(engine))
+        if (engine?.Game == QuakeGame.Quake2)
         {
             return BuildQuake2LaunchArguments();
         }
@@ -1536,7 +1567,7 @@ public partial class MainWindow : Window
                 missionPack.GameDirectory))
         {
             arguments.Add("-game");
-            arguments.Add(missionPack.GameDirectory);
+            arguments.Add(missionPack.GameDirectory.Trim());
         }
 
         if (selectedDemo != null)
@@ -1606,7 +1637,7 @@ public partial class MainWindow : Window
         {
             arguments.Add("+set");
             arguments.Add("game");
-            arguments.Add(missionPack.GameDirectory);
+            arguments.Add(missionPack.GameDirectory.Trim());
         }
 
         // Quake 2 uses +map for demos.
@@ -1755,13 +1786,24 @@ public partial class MainWindow : Window
         MapInfo? selectedMap =
             MapComboBox.SelectedItem as MapInfo;
 
-        string? mapName = null;
+        Demo? selectedDemo =
+            GetSelectedDemo();
 
-        if (selectedMap != null)
+        if (selectedDemo == null &&
+            (selectedMap == null ||
+             string.IsNullOrWhiteSpace(selectedMap.FileName)))
         {
-            mapName =
-                Path.GetFileNameWithoutExtension(
-                    selectedMap.FileName);
+            MessageBoxResult result =
+                System.Windows.MessageBox.Show(
+                    "Map selection was cleared and game will start with default settings. Do you want to continue?",
+                    "Warning",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
         }
 
         string quakeFolder =
@@ -1825,9 +1867,6 @@ public partial class MainWindow : Window
 
             return;
         }
-
-        Demo? selectedDemo =
-            GetSelectedDemo();
 
         try
         {
