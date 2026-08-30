@@ -1,4 +1,6 @@
-﻿namespace TinyQuakeLauncher.Models;
+﻿using TinyQuakeLauncher.Games;
+
+namespace TinyQuakeLauncher.Models;
 
 public class Engine
 {
@@ -6,8 +8,12 @@ public class Engine
 
     public string ExecutablePath { get; set; } = "";
 
+    public QuakeGame Game { get; set; }
+
     public override string ToString()
     {
-        return Name;
+        return Game == QuakeGame.Quake2
+            ? $"{Name} | Q2"
+            : $"{Name} | Q1";
     }
 }
