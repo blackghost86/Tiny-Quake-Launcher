@@ -1,6 +1,6 @@
-﻿using Microsoft.VisualBasic.FileIO;
-using System.IO;
+﻿using System.IO;
 using TinyQuakeLauncher.Models;
+using TinyQuakeLauncher.Games;
 
 namespace TinyQuakeLauncher.Services;
 
@@ -38,7 +38,8 @@ public class EngineDetector2
     private Engine? IdentifyEngine(string executablePath)
     {
         string fileName =
-            Path.GetFileName(executablePath).ToLowerInvariant();
+            Path.GetFileName(executablePath)
+                .ToLowerInvariant();
 
         return fileName switch
         {
@@ -62,6 +63,19 @@ public class EngineDetector2
                 "Quake II GOG",
                 executablePath),
 
+            // These engines support Quake 2 in addition to Quake 1.
+            "ironwail.exe" => CreateEngine(
+                "Ironwail",
+                executablePath),
+
+            "fteqw.exe" => CreateEngine(
+                "FTEQW",
+                executablePath),
+
+            "fteqw64.exe" => CreateEngine(
+                "FTEQW",
+                executablePath),
+
             _ => null
         };
     }
@@ -73,7 +87,8 @@ public class EngineDetector2
         return new Engine
         {
             Name = name,
-            ExecutablePath = executablePath
+            ExecutablePath = executablePath,
+            Game = QuakeGame.Quake2
         };
     }
 }

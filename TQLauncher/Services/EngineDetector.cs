@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using TinyQuakeLauncher.Models;
+using TinyQuakeLauncher.Games;
 
 namespace TinyQuakeLauncher.Services;
 
@@ -37,7 +38,8 @@ public class EngineDetector
     private Engine? IdentifyEngine(string executablePath)
     {
         string fileName =
-            Path.GetFileName(executablePath).ToLowerInvariant();
+            Path.GetFileName(executablePath)
+                .ToLowerInvariant();
 
         return fileName switch
         {
@@ -92,7 +94,8 @@ public class EngineDetector
         return new Engine
         {
             Name = name,
-            ExecutablePath = executablePath
+            ExecutablePath = executablePath,
+            Game = QuakeGame.Quake1
         };
     }
 }
