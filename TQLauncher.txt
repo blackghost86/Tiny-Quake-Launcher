@@ -1,6 +1,6 @@
 Tiny Quake Launcher
 ----------------------------------------------------------------------
-A simple launcher for Quake, Quake 2 and their mission packs.
+A simple launcher for Quake, Quake 2 and their mods/mission packs.
 
 Features
 ----------------------------------------------------------------------
@@ -33,6 +33,15 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 ----------------------------------------------------------------------
+0.9.4:
+- Q1/Q2 engine identification overhaul and shared folder support.
+- Launcher gives a warning if game starts with no map set.
+- Clear buttons now become unavailable if they were used once.
+- Fixed extra space in command line args before demo.
+- Fixed demo drop-down selection if no valid demo is found.
+- Fixed clear map values if launcher is restarted.
+- Clear map should also clear difficulty.
+
 0.9.3:
 - Added a color for Easy difficulty (blue) since it was missing one.
 - Added a tooltip for demo names if too long.
