@@ -29,5 +29,5 @@ Install [.NET 10.0 Desktop Runtime](https://builds.dotnet.microsoft.com/dotnet/W
 
 # Credits
 - Thanks to [NightFright2k19](https://github.com/NightFright2k19) for feedback and bug reports.
-- Thanks to [MaxED](https://github.com/m-x-d) and his [Simple Quake Launcher 2](https://github.com/m-x-d/Simple-Quake-Launcher-2).
+- Thanks to [MaxED](https://github.com/m-x-d) and his Simple Quake Launcher 2.
 - Thanks to MrElusive for [Omicron bots](https://www.slipseer.com/index.php?resources/omicron-bots.101/).
