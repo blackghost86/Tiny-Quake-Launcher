@@ -16,7 +16,7 @@ A simple launcher for Quake, Quake 2 and their mods/mission packs.
 - Quake 2 support - done (v0.7)
 - Demo support for Quake and Quake 2 - done (v0.9.2)
 - Engine identification overhaul and shared folder support - done (v0.9.4)
-- Quake 2: Call of the Void (2025) support - done (v0.9.5)
+- Quake 2 GOG + Call of the Void (2025) support - done (v0.9.5)
 - Multiplayer and bot support for Quake - work in progress (v1.0)
 - Multiplayer support for Quake 2 - not started yet
 - Support for other games - not planned yet
@@ -29,5 +29,5 @@ Install [.NET 10.0 Desktop Runtime](https://builds.dotnet.microsoft.com/dotnet/W
 
 # Credits
 - Thanks to [NightFright2k19](https://github.com/NightFright2k19) for feedback and bug reports.
-- Thanks to [MaxED](https://github.com/m-x-d) and his Simple Quake Launcher 2.
+- Thanks to [MaxED](https://github.com/m-x-d) and his [Simple Quake Launcher 2](https://github.com/m-x-d/Simple-Quake-Launcher-2).
 - Thanks to MrElusive for [Omicron bots](https://www.slipseer.com/index.php?resources/omicron-bots.101/).
