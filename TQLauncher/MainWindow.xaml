@@ -201,9 +201,23 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock
+                x:Name="DemoLabel"
                 Grid.Column="0"
                 Text="Demo:"
-                VerticalAlignment="Center"/>
+                VerticalAlignment="Center">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="Black"/>
+                        <Style.Triggers>
+                            <DataTrigger
+                                Binding="{Binding IsEnabled, ElementName=DemoComboBox}"
+                                Value="False">
+                                <Setter Property="Foreground" Value="DarkGray"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
 
             <ComboBox
                 x:Name="DemoComboBox"
@@ -213,12 +227,41 @@
                 Margin="0,0,6,0"
                 ToolTip="{Binding SelectedItem.Name, RelativeSource={RelativeSource Self}}"
                 SelectionChanged="DemoComboBox_SelectionChanged">
+                <ComboBox.Style>
+                    <Style TargetType="ComboBox">
+                        <Setter Property="BorderBrush" Value="Black"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="BorderBrush" Value="DarkGray"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ComboBox.Style>
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock
                             Text="{Binding Name}"
                             ToolTip="{Binding Name}"
-                            TextTrimming="CharacterEllipsis"/>
+                            TextTrimming="CharacterEllipsis">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{Binding Foreground}"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition
+                                                    Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                                    Value="False"/>
+                                                <Condition
+                                                    Binding="{Binding Name}"
+                                                    Value="None"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Foreground" Value="DarkGray"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
@@ -303,7 +346,7 @@
 
                     <!-- Clear extra arguments -->
 
-                <Button
+                    <Button
                     x:Name="ClearExtraArgumentsButton"
                     Width="38"
                     Height="26"
@@ -313,25 +356,25 @@
                     BorderBrush="#999999"
                     ToolTip="Clear extra arguments"
                     Click="ClearExtraArgumentsButton_Click">
-                        
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter
+
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter
                                 Property="Foreground"
                                 Value="Red"/>
 
-                            <Style.Triggers>
-                                <Trigger
+                                <Style.Triggers>
+                                    <Trigger
                                     Property="IsEnabled"
                                     Value="False">
-                                    <Setter
+                                        <Setter
                                     Property="Foreground"
                                     Value="DarkGray"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
 
                     <!-- Desktop shortcut -->
 
@@ -396,7 +439,7 @@
                 VerticalAlignment="Center"/>
             <TextBlock
                 Grid.Column="1"
-                Text="v0.9.4"
+                Text="v0.9.5"
                 Foreground="#B0B0B0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"/>

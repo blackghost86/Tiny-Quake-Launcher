@@ -27,6 +27,8 @@ public class LauncherSettings
 
     public bool MapSelectionCleared { get; set; }
 
+    public bool DontShowMapClearedWarning { get; set; }
+
     public int? Difficulty { get; set; }
 
     public bool DifficultySelectionCleared { get; set; }
@@ -550,6 +552,29 @@ public partial class MainWindow : Window
         }
     }
 
+    private string GetEngineGameFolder(
+        Engine engine,
+        string quakeFolder)
+    {
+        if (string.Equals(
+            engine.Name,
+            "Chocolate Quake",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            string? engineDirectory =
+                Path.GetDirectoryName(
+                    engine.ExecutablePath);
+
+            if (!string.IsNullOrWhiteSpace(engineDirectory) &&
+                Directory.Exists(engineDirectory))
+            {
+                return engineDirectory;
+            }
+        }
+
+        return quakeFolder;
+    }
+
     private void DetectQuakeInstallation(
         string quakeFolder)
     {
@@ -601,6 +626,7 @@ public partial class MainWindow : Window
             DemoComboBox.ToolTip = null;
 
             demoSelectionActive = false;
+            UpdateDemoControlsState();
 
             CommandArgumentsTextBox.Text = "";
 
@@ -630,17 +656,36 @@ public partial class MainWindow : Window
 
         List<MissionPack> missionPacks;
 
+        string detectionFolder =
+            engine == null
+                ? quakeFolder
+                : GetEngineGameFolder(
+                    engine,
+                    quakeFolder);
+
         if (engine?.Game == QuakeGame.Quake2)
         {
-            missionPacks =
-                missionPackDetector2
-                    .DetectMissionPacks(quakeFolder);
+            if (string.Equals(
+                engine.Name,
+                "Quake II GOG",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                missionPacks =
+                    missionPackDetector2
+                        .DetectGogMissionPacks(detectionFolder);
+            }
+            else
+            {
+                missionPacks =
+                    missionPackDetector2
+                        .DetectMissionPacks(detectionFolder);
+            }
         }
         else
         {
             missionPacks =
                 missionPackDetector
-                    .DetectMissionPacks(quakeFolder);
+                    .DetectMissionPacks(detectionFolder);
         }
 
         foreach (MissionPack missionPack in missionPacks)
@@ -679,12 +724,22 @@ public partial class MainWindow : Window
         string gameDirectory =
             missionPack.GameDirectory?.Trim() ?? "";
 
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
+
+        string engineGameFolder =
+            engine == null
+                ? quakeFolder
+                : GetEngineGameFolder(
+                    engine,
+                    quakeFolder);
+
         // Vanilla Quake.
         if (string.IsNullOrWhiteSpace(gameDirectory))
         {
             string id1Folder =
                 Path.Combine(
-                    quakeFolder,
+                    engineGameFolder,
                     "id1");
 
             if (Directory.Exists(id1Folder))
@@ -692,7 +747,7 @@ public partial class MainWindow : Window
                 return id1Folder;
             }
 
-            return quakeFolder;
+            return engineGameFolder;
         }
 
         // Some detectors may return an absolute path.
@@ -703,7 +758,7 @@ public partial class MainWindow : Window
 
         // Normal mission pack directory.
         return Path.Combine(
-            quakeFolder,
+            engineGameFolder,
             gameDirectory);
     }
 
@@ -820,18 +875,75 @@ public partial class MainWindow : Window
                     MapComboBox.SelectedIndex = 0;
                 }
             }
-            else if (MapComboBox.Items.Count > 1)
-            {
-                MapComboBox.SelectedIndex = 1;
-            }
             else
             {
-                MapComboBox.SelectedIndex = 0;
+                string? defaultMap =
+                    GetQuake2GogDefaultMap(
+                        missionPack,
+                        engine);
+
+                int defaultIndex = -1;
+
+                if (!string.IsNullOrWhiteSpace(defaultMap))
+                {
+                    int mapIndex =
+                        maps.FindIndex(
+                            map => string.Equals(
+                                Path.GetFileNameWithoutExtension(
+                                    map.FileName),
+                                Path.GetFileNameWithoutExtension(
+                                    defaultMap),
+                                StringComparison.OrdinalIgnoreCase));
+
+                    if (mapIndex >= 0)
+                    {
+                        defaultIndex = mapIndex + 1;
+                    }
+                }
+
+                if (defaultIndex > 0)
+                {
+                    MapComboBox.SelectedIndex =
+                        defaultIndex;
+                }
+                else if (MapComboBox.Items.Count > 1)
+                {
+                    MapComboBox.SelectedIndex = 1;
+                }
+                else
+                {
+                    MapComboBox.SelectedIndex = 0;
+                }
             }
         }
 
         UpdateMapToolTip();
         UpdateCommandArguments();
+    }
+
+    private string? GetQuake2GogDefaultMap(
+        MissionPack missionPack,
+        Engine? engine)
+    {
+        if (engine?.Game != QuakeGame.Quake2 ||
+            !string.Equals(
+                engine.Name,
+                "Quake II GOG",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return missionPack.Name switch
+        {
+            "Quake II" => "base1.bsp",
+            "The Reckoning" => "badlands.bsp",
+            "Ground Zero" => "rammo1.bsp",
+            "Quake II 64" => "outpost.bsp",
+            "Call of the Machine" => "mguhub.bsp",
+            "Call of the Void" => "voidhub.bsp",
+            _ => null
+        };
     }
 
     private void DetectDemos()
@@ -859,6 +971,7 @@ public partial class MainWindow : Window
         if (missionPack == null || engine == null)
         {
             DemoComboBox.SelectedIndex = 0;
+            UpdateDemoControlsState();
             return;
         }
 
@@ -868,6 +981,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(gameFolder))
         {
             DemoComboBox.SelectedIndex = 0;
+            UpdateDemoControlsState();
             return;
         }
 
@@ -880,6 +994,7 @@ public partial class MainWindow : Window
             else
             {
                 DemoComboBox.SelectedIndex = 0;
+                UpdateDemoControlsState();
                 return;
             }
         }
@@ -895,7 +1010,26 @@ public partial class MainWindow : Window
         }
 
         DemoComboBox.SelectedIndex = 0;
+        UpdateDemoControlsState();
         UpdateCommandArguments();
+    }
+
+    private void UpdateDemoControlsState()
+    {
+        bool hasDemos =
+            DemoComboBox.Items
+                .OfType<Demo>()
+                .Any(demo =>
+                    !string.IsNullOrWhiteSpace(
+                        demo.FileName));
+
+        DemoComboBox.IsEnabled =
+            hasDemos;
+        ClearDemoButton.IsEnabled =
+            hasDemos && demoSelectionActive;
+
+        DemoLabel.IsEnabled =
+            hasDemos;
     }
 
     private static bool IsMultiplayerMap(
@@ -1041,8 +1175,7 @@ public partial class MainWindow : Window
             DemoComboBox.SelectedItem is Demo selectedDemo &&
             !string.IsNullOrWhiteSpace(selectedDemo.FileName);
 
-        ClearDemoButton.IsEnabled =
-            demoSelectionActive;
+        UpdateDemoControlsState();
 
         MapComboBox.IsEnabled =
             !demoSelectionActive;
@@ -1143,6 +1276,7 @@ public partial class MainWindow : Window
 
         ClearMapButton.IsEnabled = true;
         ClearDifficultyButton.IsEnabled = true;
+        UpdateDemoControlsState();
 
         MapLabel.Foreground =
             System.Windows.SystemColors.ControlTextBrush;
@@ -1775,6 +1909,102 @@ public partial class MainWindow : Window
         return result;
     }
 
+    private MessageBoxResult ShowMapClearedWarning(
+        out bool dontShowAgain)
+    {
+        System.Windows.Controls.CheckBox checkBox =
+            new System.Windows.Controls.CheckBox
+            {
+                Content = "Don't show this message again",
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+
+        System.Windows.Controls.TextBlock message =
+            new System.Windows.Controls.TextBlock
+            {
+                Text =
+                    "Map selection was cleared and game will start with\n" +
+                    "default settings. Do you want to continue?",
+                TextWrapping = TextWrapping.Wrap
+            };
+
+        System.Windows.Controls.Button yesButton =
+            new System.Windows.Controls.Button
+            {
+                Content = "Yes",
+                Width = 75,
+                IsDefault = true,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+
+        System.Windows.Controls.Button noButton =
+            new System.Windows.Controls.Button
+            {
+                Content = "No",
+                Width = 75,
+                IsCancel = true
+            };
+
+        System.Windows.Controls.StackPanel buttons =
+            new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment =
+                    System.Windows.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 18, 0, 0)
+            };
+
+        buttons.Children.Add(yesButton);
+        buttons.Children.Add(noButton);
+
+        System.Windows.Controls.StackPanel content =
+            new System.Windows.Controls.StackPanel
+            {
+                Margin = new Thickness(20)
+            };
+
+        content.Children.Add(message);
+        content.Children.Add(checkBox);
+        content.Children.Add(buttons);
+
+        Window dialog =
+            new Window
+            {
+                Title = "Warning",
+                Content = content,
+                Owner = this,
+                WindowStartupLocation =
+                    WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                ShowInTaskbar = false
+            };
+
+        MessageBoxResult result =
+            MessageBoxResult.No;
+
+        yesButton.Click +=
+            (_, _) =>
+            {
+                result = MessageBoxResult.Yes;
+                dialog.DialogResult = true;
+            };
+
+        noButton.Click +=
+            (_, _) =>
+            {
+                result = MessageBoxResult.No;
+                dialog.DialogResult = false;
+            };
+
+        dialog.ShowDialog();
+
+        dontShowAgain =
+            checkBox.IsChecked == true;
+
+        return result;
+    }
+
     private void LaunchQuake()
     {
         Engine? engine =
@@ -1793,16 +2023,27 @@ public partial class MainWindow : Window
             (selectedMap == null ||
              string.IsNullOrWhiteSpace(selectedMap.FileName)))
         {
-            MessageBoxResult result =
-                System.Windows.MessageBox.Show(
-                    "Map selection was cleared and game will start with default settings. Do you want to continue?",
-                    "Warning",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
+            LauncherSettings settings =
+                LoadSettings();
 
-            if (result != MessageBoxResult.Yes)
+            if (!settings.DontShowMapClearedWarning)
             {
-                return;
+                bool dontShowAgain;
+
+                MessageBoxResult result =
+                    ShowMapClearedWarning(
+                        out dontShowAgain);
+
+                if (dontShowAgain)
+                {
+                    settings.DontShowMapClearedWarning = true;
+                    SaveSettings(settings);
+                }
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
             }
         }
 
@@ -1891,9 +2132,9 @@ public partial class MainWindow : Window
                 BuildLaunchArguments();
 
             string engineDirectory =
-                Path.GetDirectoryName(
-                    engine.ExecutablePath) ??
-                quakeFolder;
+                GetEngineGameFolder(
+                    engine,
+                    quakeFolder);
 
             ProcessStartInfo startInfo =
                 new ProcessStartInfo
