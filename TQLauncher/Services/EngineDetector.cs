@@ -47,6 +47,14 @@ public class EngineDetector
                 "Quakespasm",
                 executablePath),
 
+            "quakespasm-spiked.exe" => CreateEngine(
+                "Quakespasm-Spiked",
+                executablePath),
+
+            "qss.exe" => CreateEngine(
+                "Quakespasm-Spiked",
+                executablePath),
+
             "vkquake.exe" => CreateEngine(
                 "vkQuake",
                 executablePath),
@@ -63,12 +71,8 @@ public class EngineDetector
                 "FTEQW",
                 executablePath),
 
-            "quakespasm-spiked.exe" => CreateEngine(
-                "Quakespasm-Spiked",
-                executablePath),
-
-            "qss.exe" => CreateEngine(
-                "Quakespasm-Spiked",
+            "chocolate-quake.exe" => CreateEngine(
+                "Chocolate Quake",
                 executablePath),
 
             "darkplaces.exe" => CreateEngine(

@@ -63,11 +63,7 @@ public class EngineDetector2
                 "Quake II GOG",
                 executablePath),
 
-            // These engines support Quake 2 in addition to Quake 1.
-            "ironwail.exe" => CreateEngine(
-                "Ironwail",
-                executablePath),
-
+            // This engine supports both games.
             "fteqw.exe" => CreateEngine(
                 "FTEQW",
                 executablePath),

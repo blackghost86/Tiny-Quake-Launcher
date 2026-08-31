@@ -38,6 +38,175 @@ public class MissionPackDetector2
             }
         };
 
+    public List<MissionPack> DetectGogMissionPacks(
+        string quake2Folder)
+    {
+        List<MissionPack> detected =
+            new();
+
+        if (!Directory.Exists(quake2Folder))
+        {
+            return detected;
+        }
+
+        string baseq2Folder =
+            Path.Combine(
+                quake2Folder,
+                "baseq2");
+
+        if (!Directory.Exists(baseq2Folder))
+        {
+            return detected;
+        }
+
+        // Quake 2 GOG combines the original game, The Reckoning,
+        // Ground Zero, Q64 and Call of the Machine in baseq2.
+        detected.Add(
+            new MissionPack
+            {
+                Name = "Quake II",
+                PossibleDirectories = new List<string>
+                {
+                    "baseq2"
+                },
+                DetectedDirectory = "baseq2"
+            });
+
+        detected.Add(
+            new MissionPack
+            {
+                Name = "The Reckoning",
+                PossibleDirectories = new List<string>
+                {
+                    "baseq2"
+                },
+                DetectedDirectory = "baseq2"
+            });
+
+        detected.Add(
+            new MissionPack
+            {
+                Name = "Ground Zero",
+                PossibleDirectories = new List<string>
+                {
+                    "baseq2"
+                },
+                DetectedDirectory = "baseq2"
+            });
+
+        detected.Add(
+            new MissionPack
+            {
+                Name = "Quake II 64",
+                PossibleDirectories = new List<string>
+                {
+                    "baseq2"
+                },
+                DetectedDirectory = "baseq2"
+            });
+
+        detected.Add(
+            new MissionPack
+            {
+                Name = "Call of the Machine",
+                PossibleDirectories = new List<string>
+                {
+                    "baseq2"
+                },
+                DetectedDirectory = "baseq2"
+            });
+
+        string voidFolder =
+            Path.Combine(
+                quake2Folder,
+                "void");
+
+        string q1q2Folder =
+            Path.Combine(
+                quake2Folder,
+                "q1q2");
+
+        if (Directory.Exists(voidFolder))
+        {
+            detected.Add(
+                new MissionPack
+                {
+                    Name = "Call of the Void",
+                    PossibleDirectories = new List<string>
+                    {
+                        "void"
+                    },
+                    DetectedDirectory = "void"
+                });
+        }
+        else if (Directory.Exists(q1q2Folder))
+        {
+            detected.Add(
+                new MissionPack
+                {
+                    Name = "Call of the Void",
+                    PossibleDirectories = new List<string>
+                    {
+                        "q1q2"
+                    },
+                    DetectedDirectory = "q1q2"
+                });
+        }
+
+        // ---------------------------------------------
+        // Detect custom Quake 2 directories.
+        // ---------------------------------------------
+
+        HashSet<string> reservedDirectories =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                "baseq2",
+                "xatrix",
+                "rogue",
+                "void",
+                "q1q2"
+            };
+
+        string[] directories =
+            Directory.GetDirectories(
+                quake2Folder,
+                "*",
+                SearchOption.TopDirectoryOnly);
+
+        foreach (string directory in directories)
+        {
+            string folderName =
+                Path.GetFileName(
+                    directory.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar));
+
+            if (string.IsNullOrWhiteSpace(folderName) ||
+                reservedDirectories.Contains(folderName))
+            {
+                continue;
+            }
+
+            if (!ContainsQuake2Content(directory))
+            {
+                continue;
+            }
+
+            detected.Add(
+                new MissionPack
+                {
+                    Name = folderName,
+                    PossibleDirectories = new List<string>
+                    {
+                        folderName
+                    },
+                    DetectedDirectory = folderName
+                });
+        }
+
+        return detected;
+    }
+
     public List<MissionPack> DetectMissionPacks(
         string quake2Folder)
     {
@@ -50,7 +219,7 @@ public class MissionPackDetector2
         }
 
         // ---------------------------------------------
-        // 1. Detect known Quake II episodes/mods.
+        // 1. Detect known Quake 2 episodes/mods.
         // ---------------------------------------------
 
         foreach (MissionPack missionPack in allMissionPacks)
@@ -64,7 +233,7 @@ public class MissionPackDetector2
         }
 
         // ---------------------------------------------
-        // 2. Detect unknown Quake II episodes/mods.
+        // 2. Detect unknown Quake 2 episodes/mods.
         // ---------------------------------------------
 
         HashSet<string> knownDirectories =
@@ -105,7 +274,7 @@ public class MissionPackDetector2
                 continue;
             }
 
-            // baseq2 is the main Quake II game directory.
+            // baseq2 is the main Quake 2 game directory.
             if (string.Equals(
                 folderName,
                 "baseq2",
@@ -144,7 +313,7 @@ public class MissionPackDetector2
                 });
         }
 
-        // Keep official Quake II episodes together in the
+        // Keep official Quake 2 episodes together in the
         // standard episode/mission pack order.
 
         List<MissionPack> official =
@@ -221,7 +390,7 @@ public class MissionPackDetector2
 
         foreach (MissionPack missionPack in allMissionPacks)
         {
-            // Quake II itself is the base game, not a mission pack.
+            // Quake 2 itself is the base game, not a mission pack.
 
             if (string.Equals(
                 missionPack.Name,

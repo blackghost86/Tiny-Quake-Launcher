@@ -380,6 +380,44 @@ public class MapDetector2
                 normalized.Substring(2);
         }
 
+        // Quake 2 64 stores its maps under:
+        //
+        // maps/q64/mapname.bsp
+        //
+        // Treat these as normal map entries and expose only
+        // the actual map filename to the launcher.
+        int q64MapsIndex =
+            normalized.LastIndexOf(
+                "/maps/q64/",
+                StringComparison.OrdinalIgnoreCase);
+
+        if (q64MapsIndex >= 0)
+        {
+            string fileName =
+                normalized.Substring(
+                    q64MapsIndex + 10);
+
+            return fileName.Length > 4 &&
+                   fileName.EndsWith(
+                       ".bsp",
+                       StringComparison.OrdinalIgnoreCase) &&
+                   fileName.IndexOf('/') < 0;
+        }
+
+        if (normalized.StartsWith(
+                "maps/q64/",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            string fileName =
+                normalized.Substring(10);
+
+            return fileName.Length > 4 &&
+                   fileName.EndsWith(
+                       ".bsp",
+                       StringComparison.OrdinalIgnoreCase) &&
+                   fileName.IndexOf('/') < 0;
+        }
+
         // Accept the normal Quake II layout:
         //
         // maps/mapname.bsp
@@ -627,7 +665,7 @@ public class MapDetector2
     }
 
     // =========================================================
-    // QUAKE II BSP TITLE
+    // QUAKE 2 BSP TITLE
     // =========================================================
 
     private string ReadBspTitle(
