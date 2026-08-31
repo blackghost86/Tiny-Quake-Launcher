@@ -17,7 +17,7 @@ A simple launcher for Quake, Quake 2 and their mods/mission packs.
 - Demo support for Quake and Quake 2 - done (v0.9.2)
 - Engine identification overhaul and shared folder support - done (v0.9.4)
 - Quake 2 GOG + Call of the Void (2025) support - done (v0.9.5)
-- Multiplayer and bot support for Quake - work in progress (v1.0)
+- Multiplayer and bot support for Quake - in progress (v1.0)
 - Multiplayer support for Quake 2 - not started yet
 - Support for other games - not planned yet
 
