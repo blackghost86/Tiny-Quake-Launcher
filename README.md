@@ -25,7 +25,7 @@ Quake 2:
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
-- Shared folder support done (v0.9.4)
+- Shared folder support - done (v0.9.4)
 - Support for other games - not planned yet
 
 # Installation
