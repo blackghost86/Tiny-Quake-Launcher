@@ -15,7 +15,7 @@ A simple launcher for Quake, Quake 2 and their mods/mission packs.
 Quake:
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
 - Demo support for Quake and Quake 2 - done (v0.9.2)
-- Quake GOG + Vanilla Quake support- done (0.9.6)
+- Quake GOG + Vanilla Quake support - done (0.9.6)
 - Multiplayer support - in progress (v1.0)
 
 Quake 2:
