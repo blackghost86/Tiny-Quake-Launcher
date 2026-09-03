@@ -22,7 +22,7 @@ Quake 2:
 - Quake 2 support - done (v0.7)
 - Demo support for Quake 1 + 2 - done (v0.9.2)
 - Quake 2 GOG + Call of the Void (2025) support - done (v0.9.5)
-- Vanilla Quake 2 (Win version) support - done (v0.9.6)
+- Vanilla Quake 2 (Win 95 version) support - done (v0.9.6)
 - Multiplayer support - not started yet
 
 Other:
