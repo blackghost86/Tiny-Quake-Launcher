@@ -140,12 +140,14 @@ public class MissionPackDetector
                 continue;
             }
 
-            if (!ContainsQuakeContent(directory))
+            // Custom mods are detected only when progs.dat exists,
+            // either directly in the folder or inside a PAK/PK3 archive.
+            if (!ContainsProgsDat(directory))
             {
                 continue;
             }
 
-            // Unknown/renamed episode or custom mod.
+            // Custom mod.
             detected.Add(
                 new MissionPack
                 {
@@ -161,48 +163,50 @@ public class MissionPackDetector
         return detected;
     }
 
-    private bool ContainsQuakeContent(
+    private bool ContainsProgsDat(
         string folder)
     {
-        // ---------------------------------------------
-        // Check for PAK files directly in the folder.
-        // ---------------------------------------------
+        // -------------------------------------------------
+        // Loose progs.dat directly in the mod folder.
+        // -------------------------------------------------
 
-        if (Directory.GetFiles(
-            folder,
-            "*.pak",
-            SearchOption.TopDirectoryOnly).Length > 0)
-        {
-            return true;
-        }
-
-        // ---------------------------------------------
-        // Check for loose BSP maps.
-        // ---------------------------------------------
-
-        string mapsFolder =
+        if (File.Exists(
             Path.Combine(
                 folder,
-                "maps");
-
-        if (Directory.Exists(mapsFolder) &&
-            Directory.GetFiles(
-                mapsFolder,
-                "*.bsp",
-                SearchOption.TopDirectoryOnly).Length > 0)
+                "progs.dat")))
         {
             return true;
         }
 
-        // ---------------------------------------------
-        // Check PK3 and ZIP archives for BSP maps.
-        // ---------------------------------------------
+        // -------------------------------------------------
+        // progs.dat inside PAK archives.
+        // -------------------------------------------------
+
+        string[] pakFiles =
+            Directory.GetFiles(
+                folder,
+                "*.pak",
+                SearchOption.AllDirectories);
+
+        foreach (string pakFile in pakFiles)
+        {
+            if (PakContainsFile(
+                pakFile,
+                "progs.dat"))
+            {
+                return true;
+            }
+        }
+
+        // -------------------------------------------------
+        // progs.dat inside PK3/ZIP archives.
+        // -------------------------------------------------
 
         string[] archiveFiles =
             Directory.GetFiles(
                 folder,
                 "*",
-                SearchOption.TopDirectoryOnly);
+                SearchOption.AllDirectories);
 
         foreach (string archiveFile in archiveFiles)
         {
@@ -221,8 +225,9 @@ public class MissionPackDetector
                 continue;
             }
 
-            if (ArchiveContainsQuake1Map(
-                archiveFile))
+            if (ZipContainsFile(
+                archiveFile,
+                "progs.dat"))
             {
                 return true;
             }
@@ -231,8 +236,97 @@ public class MissionPackDetector
         return false;
     }
 
-    private bool ArchiveContainsQuake1Map(
-        string archiveFile)
+    private bool PakContainsFile(
+        string pakFile,
+        string targetFile)
+    {
+        try
+        {
+            using FileStream stream =
+                File.OpenRead(pakFile);
+
+            using BinaryReader reader =
+                new(stream);
+
+            if (stream.Length < 12)
+            {
+                return false;
+            }
+
+            string magic =
+                System.Text.Encoding.ASCII.GetString(
+                    reader.ReadBytes(4));
+
+            if (!string.Equals(
+                magic,
+                "PACK",
+                StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            int directoryOffset =
+                reader.ReadInt32();
+
+            int directoryLength =
+                reader.ReadInt32();
+
+            if (directoryOffset < 0 ||
+                directoryLength < 0 ||
+                directoryLength % 64 != 0 ||
+                directoryOffset > stream.Length ||
+                directoryLength >
+                    stream.Length - directoryOffset)
+            {
+                return false;
+            }
+
+            stream.Position =
+                directoryOffset;
+
+            int entryCount =
+                directoryLength / 64;
+
+            for (int i = 0;
+                 i < entryCount;
+                 i++)
+            {
+                byte[] nameBytes =
+                    reader.ReadBytes(56);
+
+                if (nameBytes.Length != 56)
+                {
+                    return false;
+                }
+
+                string entryName =
+                    DecodePakString(nameBytes);
+
+                // PAK directory entry:
+                // 56 bytes name + 4 bytes offset + 4 bytes size.
+                _ = reader.ReadInt32();
+                _ = reader.ReadInt32();
+
+                if (string.Equals(
+                    Path.GetFileName(entryName),
+                    targetFile,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore invalid or unreadable PAK files.
+        }
+
+        return false;
+    }
+
+    private bool ZipContainsFile(
+        string archiveFile,
+        string targetFile)
     {
         try
         {
@@ -241,65 +335,38 @@ public class MissionPackDetector
 
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
-                string entryPath =
-                    entry.FullName
-                        .Replace('\\', '/')
-                        .TrimStart('/');
-
-                // Remove a leading "./" if present.
-                while (entryPath.StartsWith(
-                    "./",
-                    StringComparison.Ordinal))
+                if (string.Equals(
+                    Path.GetFileName(entry.FullName),
+                    targetFile,
+                    StringComparison.OrdinalIgnoreCase))
                 {
-                    entryPath =
-                        entryPath.Substring(2);
-                }
-
-                int mapsIndex =
-                    entryPath.LastIndexOf(
-                        "/maps/",
-                        StringComparison.OrdinalIgnoreCase);
-
-                if (mapsIndex >= 0)
-                {
-                    string fileName =
-                        entryPath.Substring(
-                            mapsIndex + 6);
-
-                    if (fileName.EndsWith(
-                            ".bsp",
-                            StringComparison.OrdinalIgnoreCase) &&
-                        fileName.IndexOf('/') < 0)
-                    {
-                        return true;
-                    }
-
-                    continue;
-                }
-
-                if (entryPath.StartsWith(
-                        "maps/",
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    string fileName =
-                        entryPath.Substring(5);
-
-                    if (fileName.EndsWith(
-                            ".bsp",
-                            StringComparison.OrdinalIgnoreCase) &&
-                        fileName.IndexOf('/') < 0)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
         }
         catch
         {
-            // Ignore invalid or unreadable archives
-            // and continue checking other content.
+            // Ignore invalid or unreadable PK3/ZIP files.
         }
 
         return false;
     }
+
+    private static string DecodePakString(
+        byte[] bytes)
+    {
+        int length = 0;
+
+        while (length < bytes.Length &&
+               bytes[length] != 0)
+        {
+            length++;
+        }
+
+        return System.Text.Encoding.ASCII.GetString(
+            bytes,
+            0,
+            length);
+    }
+
 }

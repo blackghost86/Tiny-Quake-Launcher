@@ -43,7 +43,60 @@ public class MapDetector
         HashSet<string> foundMaps =
             new(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string pakFile in FindPakFiles(gameFolder))
+        // Read maps from the selected game/mod folder first.
+        ReadMapsFromFolder(
+            gameFolder,
+            maps,
+            foundMaps);
+
+        // Custom Quake mods can use the maps from id1.
+        // If the selected mod has no maps of its own,
+        // fall back to the sibling id1 folder.
+        if (maps.Count == 0)
+        {
+            DirectoryInfo? parentDirectory =
+                Directory.GetParent(gameFolder);
+
+            if (parentDirectory != null)
+            {
+                string id1Folder =
+                    Path.Combine(
+                        parentDirectory.FullName,
+                        "id1");
+
+                if (Directory.Exists(id1Folder) &&
+                    !string.Equals(
+                        Path.GetFullPath(gameFolder)
+                            .TrimEnd(
+                                Path.DirectorySeparatorChar,
+                                Path.AltDirectorySeparatorChar),
+                        Path.GetFullPath(id1Folder)
+                            .TrimEnd(
+                                Path.DirectorySeparatorChar,
+                                Path.AltDirectorySeparatorChar),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    ReadMapsFromFolder(
+                        id1Folder,
+                        maps,
+                        foundMaps);
+                }
+            }
+        }
+
+        return maps
+            .OrderBy(
+                map => map.FileName,
+                new NaturalMapNameComparer())
+            .ToList();
+    }
+
+    private void ReadMapsFromFolder(
+        string folder,
+        List<MapInfo> maps,
+        HashSet<string> foundMaps)
+    {
+        foreach (string pakFile in FindPakFiles(folder))
         {
             ReadPakMaps(
                 pakFile,
@@ -51,7 +104,7 @@ public class MapDetector
                 foundMaps);
         }
 
-        foreach (string pk3File in FindPk3Files(gameFolder))
+        foreach (string pk3File in FindPk3Files(folder))
         {
             ReadPk3Maps(
                 pk3File,
@@ -60,15 +113,9 @@ public class MapDetector
         }
 
         AddLooseBspFiles(
-            gameFolder,
+            folder,
             maps,
             foundMaps);
-
-        return maps
-            .OrderBy(
-                map => map.FileName,
-                new NaturalMapNameComparer())
-            .ToList();
     }
 
     // =========================================================
@@ -428,8 +475,7 @@ public class MapDetector
                 normalized.Substring(2);
         }
 
-        // This keeps detection tolerant of how the PK3 was packed.
-
+        // This keeps detection tolerant.
         int mapsIndex =
             normalized.LastIndexOf(
                 "/maps/",

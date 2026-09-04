@@ -47,11 +47,15 @@ public class EngineDetector
                 "Quakespasm",
                 executablePath),
 
-            "quakespasm-spiked.exe" => CreateEngine(
+            "quakespasm-sdl12.exe" => CreateEngine(
+                "Quakespasm SDL",
+                executablePath),
+
+            "quakespasm-spiked-win32.exe" => CreateEngine(
                 "Quakespasm-Spiked",
                 executablePath),
 
-            "qss.exe" => CreateEngine(
+            "quakespasm-spiked-win64.exe" => CreateEngine(
                 "Quakespasm-Spiked",
                 executablePath),
 
@@ -85,6 +89,47 @@ public class EngineDetector
 
             "markv.exe" => CreateEngine(
                 "Mark V",
+                executablePath),
+
+            "quake_shipping_playfab_gog_x64.exe" => CreateEngine(
+                "Quake GOG",
+                executablePath),
+
+            "quake_gog.exe" => CreateEngine(
+                "Quake GOG",
+                executablePath),
+
+            "quake_egs.exe" => CreateEngine(
+                "Quake EGS",
+                executablePath),
+
+            "quake_x64_steam.exe" => CreateEngine(
+                "Quake (Steam)",
+                executablePath),
+
+            "quake.exe" => CreateEngine(
+                "Vanilla Quake",
+                executablePath),
+
+            "glquake.exe" => CreateEngine(
+                "GLQuake",
+                executablePath),
+
+            "qwcl.exe" => CreateEngine(
+                "QuakeWorld Client",
+                executablePath),
+
+            "glqwcl.exe" => CreateEngine(
+                "QuakeWorld Client (OpenGL)",
+                executablePath),
+
+            "winquake.exe" => CreateEngine(
+                "WinQuake",
+                executablePath),
+
+            // This engine is outdated.
+            "fitzquake.exe" => CreateEngine(
+                "WinQuake",
                 executablePath),
 
             _ => null

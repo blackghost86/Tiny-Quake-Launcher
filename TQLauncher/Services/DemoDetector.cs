@@ -143,7 +143,7 @@ public class DemoDetector
                 Directory.GetFiles(
                     folder,
                     "*",
-                    SearchOption.TopDirectoryOnly);
+                    SearchOption.AllDirectories);
         }
         catch
         {
@@ -226,7 +226,7 @@ public class DemoDetector
                 Directory.GetFiles(
                     folder,
                     "*.pak",
-                    SearchOption.TopDirectoryOnly);
+                    SearchOption.AllDirectories);
         }
         catch
         {
@@ -415,7 +415,7 @@ public class DemoDetector
                 Directory.GetFiles(
                     folder,
                     "*",
-                    SearchOption.TopDirectoryOnly);
+                    SearchOption.AllDirectories);
         }
         catch
         {

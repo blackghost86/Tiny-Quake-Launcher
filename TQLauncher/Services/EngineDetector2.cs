@@ -51,6 +51,10 @@ public class EngineDetector2
                 "Q2Pro",
                 executablePath),
 
+            "q2pro-ng.exe" => CreateEngine(
+                "Q2Pro-NG",
+                executablePath),
+
             "kmquake2.exe" => CreateEngine(
                 "KMQuake II",
                 executablePath),
@@ -61,6 +65,14 @@ public class EngineDetector2
 
             "quake2ex_gog.exe" => CreateEngine(
                 "Quake II GOG",
+                executablePath),
+
+            "quake2ex_steam.exe" => CreateEngine(
+                "Quake II (Steam)",
+                executablePath),
+
+            "quake2.exe" => CreateEngine(
+                "Vanilla Quake II",
                 executablePath),
 
             // This engine supports both games.
