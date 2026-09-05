@@ -7,7 +7,7 @@ A simple launcher for Quake, Quake 2 and their mods/mission packs.
 - Runs Quake from your desktop or your main Quake directory.
 - Automatic Quake source port detection.
 - Automatic episode/mod detection.
-- Automatic map detection from pak/pk3/custom folders.
+- Automatic map detection from pak/pk3/zip/custom folders.
 - Automatic demo detection.
 - Difficulty settings for any existing map.
 - Command line preview based on custom selection.
