@@ -129,8 +129,12 @@ public class EngineDetector
 
             // This engine is outdated.
             "fitzquake.exe" => CreateEngine(
-                "WinQuake",
+                "FitzQuake",
                 executablePath),
+
+            "fitzquake85.exe" => CreateEngine(
+                "FitzQuake",
+                 executablePath),
 
             _ => null
         };
