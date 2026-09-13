@@ -7,7 +7,7 @@ Features
 - Runs Quake from your desktop or your main Quake directory.
 - Automatic Quake source port detection.
 - Automatic episode/mod detection.
-- Automatic map detection from pak/pk3/custom folders.
+- Automatic map detection from pak/pk3/zip/custom folders.
 - Automatic demo detection.
 - Difficulty settings for any existing map.
 - Command line preview based on custom selection.
@@ -31,6 +31,7 @@ Quake 2:
 Other:
 - Engine identification overhaul - done (v0.9.4)
 - Shared folder support - done (v0.9.4)
+- Parent folder support for all engines - done (v0.9.7)
 - Support for other games - not planned yet
 
 Installation
@@ -44,10 +45,32 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 --------------------------------------------------------------------------
+0.9.7:
+- Added two new buttons to refresh engine(s) and refresh episode(s).
+- Added a warning message if the main folder selected is a root folder.
+- Added an error if no engine found and game is launched.
+- Added bottom message for clear buttons.
+- Command line args are now editable.
+- QS and QSS are running properly if placed inside a folder.
+- Code cleanup for Vanilla Quake and Quake 2.
+- Code cleanup for MainWindow.xaml.cs file.
+- Fixed shared folder support if a main parent folder is selected.
+- Fixed episode and map detection for Q2Pro-NG.
+- Fixed wrong game path for Ciocolate Quake.
+- Fixed name and support for FitzQuake v0.85 (final build).
+- Fixed tooltip not displaying for command line args.
+- Fixed manual args not copied when no engine.
+- Fixed map and demo selection if no engine found.
+- Fixed tooltip display for longer demo names.
+- Fixed width for game address bar and browse button.
+- Renamed game(s) to episode(s) in bottom message.
+- Renamed no supported engine warning.
+- Renamed desktop shortcut message.
+
 0.9.6:
 - Additional files created by their engines stay in the same folder.
 - Added a custom color for maps found inside pk3/zip archives.
-- Added support for Quake GOG and Quake 1+2 Steam Edition.
+- Added support for Quake GOG and Steam Edition.
 - Added support for Vanilla Quake 1+2, GLQuake and WinQuake.
 - Added a tooltip for main command line args.
 - Manual args added to the general args are now displayed in blue.
@@ -121,7 +144,7 @@ Changelog
 0.5:
 - Added a second command line box to insert extra arguments.
 - Added a button to erase the manual/extra arguments.
-- Added a button to create a desktop shortcut.
+- Added a button to create desktop shortcuts.
 
 0.4:
 - Fixed the way maps or loose maps are read, now we have actual maps.
@@ -136,6 +159,6 @@ Changelog
 
 0.2:
 - First public release with support for Quake and its mission packs.
-- Added support for Arcane Dimensions, Honey and Capture The Flag.
+- Added support for Arcane Dimensions, Honey and Capture the Flag.
 - Added support for the latest episode: Dawn of the Machine.
 - Fixed a few typos, error messages and color codes.
