@@ -13,7 +13,7 @@ public class Engine
     public override string ToString()
     {
         return Game == QuakeGame.Quake2
-            ? $"{Name} | Q2"
-            : $"{Name} | Q1";
+            ? $"{Name} | Quake 2"
+            : $"{Name} | Quake";
     }
 }
