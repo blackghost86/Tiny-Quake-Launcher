@@ -32,6 +32,7 @@ Other:
 - Shared folder support - done (v0.9.4)
 - Parent folder support for all engines - done (v0.9.7)
 - Support for other games - not planned yet
+- Linux version - not planned yet
 
 # Installation
 Extract and run TQLauncher.exe on your desktop or from your Quake directory.
