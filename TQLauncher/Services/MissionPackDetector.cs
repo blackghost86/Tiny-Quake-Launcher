@@ -61,6 +61,24 @@ public class MissionPackDetector
                 {
                     "mg3"
                 }
+            },
+
+            new MissionPack
+            {
+                Name = "Quoth",
+                PossibleDirectories = new List<string>
+                {
+                    "quoth"
+                }
+            },
+
+            new MissionPack
+            {
+                Name = "Nehahra",
+                PossibleDirectories = new List<string>
+                {
+                    "nehahra"
+                }
             }
         };
 
@@ -141,13 +159,13 @@ public class MissionPackDetector
             }
 
             // Custom mods are detected only when progs.dat exists,
-            // either directly in the folder or inside a PAK/PK3 archive.
+            // either directly in the folder or inside a PAK/PK3.
             if (!ContainsProgsDat(directory))
             {
                 continue;
             }
 
-            // Custom mod.
+            // Custom mods.
             detected.Add(
                 new MissionPack
                 {

@@ -55,6 +55,10 @@ public class EngineDetector2
                 "Q2Pro-NG",
                 executablePath),
 
+            "q2repro.exe" => CreateEngine(
+                "Q2REPro",
+                executablePath),
+
             "kmquake2.exe" => CreateEngine(
                 "KMQuake II",
                 executablePath),

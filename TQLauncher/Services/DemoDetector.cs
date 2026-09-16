@@ -1121,7 +1121,6 @@ public class DemoDetector
                                 return null;
                             }
 
-                            // age
                             reader.BaseStream.Position += 4;
 
                             game =
@@ -1466,8 +1465,7 @@ public class DemoDetector
                 break;
             }
 
-            // Quake entity strings can contain
-            // "\n". Display it as a space.
+            // Quake entity strings can contain "\n".
             if (current == (byte)'n' &&
                 previous == (byte)'\\')
             {
@@ -1517,8 +1515,7 @@ public class DemoDetector
                 .ToString();
         }
 
-        // Title encoding uses values
-        // outside normal ASCII.
+        // Title encoding uses values outside normal ASCII.
         if (value >= 128)
         {
             return ((char)value)

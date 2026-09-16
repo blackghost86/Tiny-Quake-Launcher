@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Linq;
 using TinyQuakeLauncher.Models;
 using TinyQuakeLauncher.Games;
 
@@ -29,6 +30,10 @@ public class EngineDetector
                 engines.Add(engine);
             }
         }
+
+        AddQuakeSpasmSpikedEngine(
+            engines,
+            folder);
 
         return engines
             .OrderBy(engine => engine.Name)
@@ -138,6 +143,57 @@ public class EngineDetector
 
             _ => null
         };
+    }
+
+    private static void AddQuakeSpasmSpikedEngine(
+        List<Engine> engines,
+        string quakeFolder)
+    {
+        //Quakespasm-Spiked could be located in a qss folder.
+        string qssFolder =
+            Path.Combine(
+                quakeFolder,
+                "qss");
+
+        if (!Directory.Exists(qssFolder))
+        {
+            return;
+        }
+
+        string? executablePath =
+            Directory.GetFiles(
+                    qssFolder,
+                    "*.exe",
+                    SearchOption.TopDirectoryOnly)
+                .FirstOrDefault(
+                    path =>
+                        Path.GetFileNameWithoutExtension(path)
+                            .StartsWith(
+                                "quakespasm-spiked",
+                                StringComparison.OrdinalIgnoreCase));
+
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return;
+        }
+
+        if (engines.Any(
+                engine =>
+                    string.Equals(
+                        engine.ExecutablePath,
+                        executablePath,
+                        StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        engines.Add(
+            new Engine
+            {
+                Name = "Quakespasm-Spiked",
+                ExecutablePath = executablePath,
+                Game = QuakeGame.Quake1
+            });
     }
 
     private Engine CreateEngine(
