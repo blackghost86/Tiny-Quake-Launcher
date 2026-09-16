@@ -30,6 +30,8 @@ public class LauncherSettings
 
     public bool DontShowMapClearedWarning { get; set; }
 
+    public bool DontShowMainQuakeFolderWarning { get; set; }
+
     public int? Difficulty { get; set; }
 
     public bool DifficultySelectionCleared { get; set; }
@@ -55,8 +57,11 @@ public partial class MainWindow : Window
 
     private readonly MapDetector2 MapDetector2 = new();
 
-    private readonly DemoDetector demoDetector = new();
     private readonly DemoDetector2 demoDetector2 = new();
+
+    private readonly QuakeHandler quakeHandler = new();
+
+    private readonly Quake2Handler quake2Handler = new();
 
     private static readonly string SettingsFolder =
         Path.Combine(
@@ -80,6 +85,12 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        QuakeFolderTextBox.Padding =
+            new Thickness(3,
+                QuakeFolderTextBox.Padding.Top,
+                QuakeFolderTextBox.Padding.Right,
+                QuakeFolderTextBox.Padding.Bottom);
 
         CommandArgumentsTextBox.ToolTip =
             "Command line arguments based on preferred settings";
@@ -117,6 +128,9 @@ public partial class MainWindow : Window
 
         DemoComboBox.SizeChanged +=
             DemoComboBox_SizeChanged;
+
+        MissionComboBox.SizeChanged +=
+            MissionComboBox_SizeChanged;
 
         LoadSavedQuakeFolder();
 
@@ -662,6 +676,61 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MissionComboBox_SizeChanged(
+        object sender,
+        SizeChangedEventArgs e)
+    {
+        UpdateMissionToolTip();
+    }
+
+    private void UpdateMissionToolTip()
+    {
+        MissionPack? selectedMissionPack =
+            MissionComboBox.SelectedItem as MissionPack;
+
+        if (selectedMissionPack == null ||
+            string.IsNullOrWhiteSpace(selectedMissionPack.Name) ||
+            MissionComboBox.ActualWidth <= 0)
+        {
+            MissionComboBox.ToolTip = null;
+            return;
+        }
+
+        string displayText =
+            selectedMissionPack.Name;
+
+        FormattedText formattedText =
+            new FormattedText(
+                displayText,
+                System.Globalization.CultureInfo.CurrentCulture,
+                System.Windows.FlowDirection.LeftToRight,
+                new Typeface(
+                    MissionComboBox.FontFamily,
+                    MissionComboBox.FontStyle,
+                    MissionComboBox.FontWeight,
+                    MissionComboBox.FontStretch),
+                MissionComboBox.FontSize,
+                System.Windows.Media.Brushes.Black,
+                VisualTreeHelper.GetDpi(
+                    MissionComboBox).PixelsPerDip);
+
+        // Leave room for the ComboBox border, padding and drop-down arrow.
+        double availableWidth =
+            MissionComboBox.ActualWidth -
+            MissionComboBox.Padding.Left -
+            MissionComboBox.Padding.Right -
+            35;
+
+        if (formattedText.Width > availableWidth)
+        {
+            MissionComboBox.ToolTip = displayText;
+        }
+        else
+        {
+            MissionComboBox.ToolTip = null;
+        }
+    }
+
     private void DemoComboBox_SizeChanged(
         object sender,
         SizeChangedEventArgs e)
@@ -732,7 +801,22 @@ public partial class MainWindow : Window
         // or miss their episode directories. Quake 1 remains unchanged.
         if (engine.Game == QuakeGame.Quake2)
         {
-            return GetQuake2EngineGameFolder(
+            return quake2Handler.GetEngineGameFolder(
+                engine,
+                quakeFolder);
+        }
+
+        // Ironwail has its own handler-specific game-root resolution.
+        if (string.Equals(
+                Path.GetFileName(engine.ExecutablePath),
+                "ironwail.exe",
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(
+                engine.Name,
+                "Ironwail",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return quakeHandler.GetIronwailGameFolder(
                 engine,
                 quakeFolder);
         }
@@ -759,8 +843,6 @@ public partial class MainWindow : Window
 
         // If the executable is below the selected folder, identify the
         // actual Quake installation folder containing that executable.
-        // This allows selecting a parent folder containing separate
-        // Quake 1 and Quake 2 installations.
         if (currentFolder.StartsWith(
                 rootFolder + Path.DirectorySeparatorChar,
                 StringComparison.OrdinalIgnoreCase) ||
@@ -797,9 +879,7 @@ public partial class MainWindow : Window
                             Path.AltDirectorySeparatorChar);
             }
 
-            // No standard game directory was found. Use the first folder
-            // below the selected parent, which covers installations whose
-            // game data is detected by the generic detectors.
+            // No standard game directory was found.
             candidate = currentFolder;
 
             while (true)
@@ -830,115 +910,6 @@ public partial class MainWindow : Window
         // Keep the selected folder as the game-data root.
         return quakeFolder;
     }
-
-    private static string GetQuake2EngineGameFolder(
-        Engine engine,
-        string quakeFolder)
-    {
-        string? engineDirectory =
-            Path.GetDirectoryName(
-                engine.ExecutablePath);
-
-        if (string.IsNullOrWhiteSpace(engineDirectory) ||
-            !Directory.Exists(engineDirectory) ||
-            !Directory.Exists(quakeFolder))
-        {
-            return quakeFolder;
-        }
-
-        string rootFolder =
-            Path.GetFullPath(quakeFolder)
-                .TrimEnd(
-                    Path.DirectorySeparatorChar,
-                    Path.AltDirectorySeparatorChar);
-
-        string currentFolder =
-            Path.GetFullPath(engineDirectory)
-                .TrimEnd(
-                    Path.DirectorySeparatorChar,
-                    Path.AltDirectorySeparatorChar);
-
-        // If the engine executable is outside the selected folder, the
-        // selected folder remains the game-data root.
-        bool isBelowSelectedFolder =
-            string.Equals(
-                currentFolder,
-                rootFolder,
-                StringComparison.OrdinalIgnoreCase) ||
-            currentFolder.StartsWith(
-                rootFolder + Path.DirectorySeparatorChar,
-                StringComparison.OrdinalIgnoreCase) ||
-            currentFolder.StartsWith(
-                rootFolder + Path.AltDirectorySeparatorChar,
-                StringComparison.OrdinalIgnoreCase);
-
-        if (!isBelowSelectedFolder)
-        {
-            return quakeFolder;
-        }
-
-        // Walk upward from the engine executable directory and use the
-        // nearest folder containing a recognized Quake 2 game directory.
-        // This resolves each engine to its own installation when the user
-        // selects a parent folder containing multiple Quake 2 installs.
-        // Unlike the old fallback, never guess an arbitrary child folder.
-        string candidate = currentFolder;
-
-        while (true)
-        {
-            if (ContainsGameDirectory(
-                    candidate,
-                    QuakeGame.Quake2))
-            {
-                return candidate;
-            }
-
-            if (string.Equals(
-                    candidate,
-                    rootFolder,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                break;
-            }
-
-            DirectoryInfo? parent =
-                Directory.GetParent(candidate);
-
-            if (parent == null)
-            {
-                break;
-            }
-
-            string parentFolder =
-                parent.FullName
-                    .TrimEnd(
-                        Path.DirectorySeparatorChar,
-                        Path.AltDirectorySeparatorChar);
-
-            // Do not walk above the folder selected by the user.
-            if (!string.Equals(
-                    parentFolder,
-                    rootFolder,
-                    StringComparison.OrdinalIgnoreCase) &&
-                !parentFolder.StartsWith(
-                    rootFolder + Path.DirectorySeparatorChar,
-                    StringComparison.OrdinalIgnoreCase) &&
-                !parentFolder.StartsWith(
-                    rootFolder + Path.AltDirectorySeparatorChar,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                break;
-            }
-
-            candidate = parentFolder;
-        }
-
-        // No recognized Quake 2 game directory was found. Keep the selected
-        // folder rather than guessing, so map/episode detection cannot
-        // accidentally combine unrelated installations.
-        return quakeFolder;
-    }
-
 
     private static bool ContainsGameDirectory(
         string folder,
@@ -984,14 +955,25 @@ public partial class MainWindow : Window
             return true;
         }
 
+        LauncherSettings settings =
+            LoadSettings();
+
+        if (settings.DontShowMainQuakeFolderWarning)
+        {
+            return true;
+        }
+
+        bool dontShowAgain;
+
         MessageBoxResult result =
-            System.Windows.MessageBox.Show(
-                "TQLauncher did not detect a main Quake folder so episode\n" +
-                "and map detection could be problematic. Do you want to\n" +
-                "continue?",
-                "Warning",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+            ShowMainQuakeFolderWarning(
+                out dontShowAgain);
+
+        if (dontShowAgain)
+        {
+            settings.DontShowMainQuakeFolderWarning = true;
+            SaveSettings(settings);
+        }
 
         return result == MessageBoxResult.Yes;
     }
@@ -1009,11 +991,6 @@ public partial class MainWindow : Window
 
         engines.AddRange(
             engineDetector2.DetectEngines(quakeFolder));
-
-        // Quakespasm-Spiked can be stored in a special qss folder.
-        AddQuakeSpasmSpikedEngine(
-            engines,
-            quakeFolder);
 
         return engines.Count > 0;
     }
@@ -1059,11 +1036,6 @@ public partial class MainWindow : Window
 
         engines.AddRange(
             engineDetector2.DetectEngines(quakeFolder));
-
-        // Quakespasm-Spiked could be inside a "qss" folder.
-        AddQuakeSpasmSpikedEngine(
-            engines,
-            quakeFolder);
 
         foreach (Engine engine in engines)
         {
@@ -1112,10 +1084,10 @@ public partial class MainWindow : Window
             CommandArgumentsTextBox.Document.Blocks.Clear();
 
             StatusText.Text =
-                "No supported Quake engine was found.";
+                "No Quake engine(s) detected.";
 
             System.Windows.MessageBox.Show(
-                "No supported Quake engine was found.",
+                "No Quake engine(s) detected.",
                 "Warning",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -1128,225 +1100,6 @@ public partial class MainWindow : Window
         // Do not force a Demo foreground here. The Demo controls use the
         // same normal WPF enabled/disabled styling as Map and Difficulty.
         EngineComboBox.SelectedIndex = 0;
-    }
-
-    private static void AddQuakeSpasmSpikedEngine(
-        List<Engine> engines,
-        string quakeFolder)
-    {
-        if (!Directory.Exists(quakeFolder))
-        {
-            return;
-        }
-
-        string qssFolder =
-            Path.Combine(
-                quakeFolder,
-                "qss");
-
-        if (!Directory.Exists(qssFolder))
-        {
-            return;
-        }
-
-        string? executablePath =
-            Directory.GetFiles(
-                    qssFolder,
-                    "*.exe",
-                    SearchOption.TopDirectoryOnly)
-                .FirstOrDefault(
-                    path =>
-                        Path.GetFileNameWithoutExtension(path)
-                            .StartsWith(
-                                "quakespasm-spiked",
-                                StringComparison.OrdinalIgnoreCase));
-
-        if (string.IsNullOrWhiteSpace(executablePath))
-        {
-            return;
-        }
-
-        if (engines.Any(
-                engine =>
-                    string.Equals(
-                        engine.ExecutablePath,
-                        executablePath,
-                        StringComparison.OrdinalIgnoreCase)))
-        {
-            return;
-        }
-
-        engines.Add(
-            new Engine
-            {
-                Name = "Quakespasm-Spiked",
-                ExecutablePath = executablePath,
-                Game = QuakeGame.Quake1
-            });
-    }
-
-    private static bool IsClassicQuakeExecutable(
-        string executablePath)
-    {
-        string executableName =
-            Path.GetFileName(
-                executablePath);
-
-        return
-            string.Equals(
-                executableName,
-                "quake.exe",
-                StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(
-                executableName,
-                "glquake.exe",
-                StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(
-                executableName,
-                "qwcl.exe",
-                StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(
-                executableName,
-                "Winquake.exe",
-                StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(
-                executableName,
-                "glqwcl.exe",
-                StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(
-                executableName,
-                "quake2.exe",
-                StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsQuake2Executable(
-        string executablePath)
-    {
-        return string.Equals(
-            Path.GetFileName(executablePath),
-            "quake2.exe",
-            StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static List<MissionPack> DetectClassicQuakeFolders(
-        string quakeFolder)
-    {
-        List<MissionPack> missionPacks =
-            new();
-
-        if (!Directory.Exists(quakeFolder))
-        {
-            return missionPacks;
-        }
-
-        string[] knownDirectories =
-        {
-            "id1",
-            "hipnotic",
-            "rogue",
-            "ctf"
-        };
-
-        string[] knownNames =
-        {
-            "Quake",
-            "Scourge of Armagon",
-            "Dissolution of Eternity",
-            "Capture the Flag"
-        };
-
-        // Only these four known Quake folders are displayed.
-        // All other folders, like rerelease, are excluded.
-        for (int i = 0; i < knownDirectories.Length; i++)
-        {
-            string directory =
-                knownDirectories[i];
-
-            string episodePath =
-                Path.Combine(
-                    quakeFolder,
-                    directory);
-
-            if (!Directory.Exists(episodePath))
-            {
-                continue;
-            }
-
-            missionPacks.Add(
-                new MissionPack
-                {
-                    Name = knownNames[i],
-                    PossibleDirectories =
-                        new List<string>
-                        {
-                            directory
-                        },
-                    DetectedDirectory =
-                        directory
-                });
-        }
-
-        return missionPacks;
-    }
-
-    private static List<MissionPack> DetectClassicQuake2Folders(
-        string quakeFolder)
-    {
-        List<MissionPack> missionPacks =
-            new();
-
-        if (!Directory.Exists(quakeFolder))
-        {
-            return missionPacks;
-        }
-
-        string[] knownDirectories =
-        {
-            "baseq2",
-            "ctf",
-            "xatrix",
-            "rogue"
-        };
-
-        string[] knownNames =
-        {
-            "Quake II",
-            "Capture the Flag",
-            "The Reckoning",
-            "Ground Zero"
-        };
-
-        // Only these four known Quake 2 folders are displayed.
-        for (int i = 0; i < knownDirectories.Length; i++)
-        {
-            string directory =
-                knownDirectories[i];
-
-            string episodePath =
-                Path.Combine(
-                    quakeFolder,
-                    directory);
-
-            if (!Directory.Exists(episodePath))
-            {
-                continue;
-            }
-
-            missionPacks.Add(
-                new MissionPack
-                {
-                    Name = knownNames[i],
-                    PossibleDirectories =
-                        new List<string>
-                        {
-                            directory
-                        },
-                    DetectedDirectory =
-                        directory
-                });
-        }
-
-        return missionPacks;
     }
 
     private void DetectMissionPacks(string quakeFolder)
@@ -1365,134 +1118,27 @@ public partial class MainWindow : Window
                     engine,
                     quakeFolder);
 
-        if (engine?.Game == QuakeGame.Quake1 &&
-            IsClassicQuakeExecutable(engine.ExecutablePath))
+        if (engine?.Game == QuakeGame.Quake1)
         {
             missionPacks =
-                DetectClassicQuakeFolders(detectionFolder);
-        }
-        else if (engine?.Game == QuakeGame.Quake2 &&
-                 IsQuake2Executable(engine.ExecutablePath))
-        {
-            missionPacks =
-                DetectClassicQuake2Folders(detectionFolder);
+                quakeHandler.DetectMissionPacks(
+                    engine,
+                    detectionFolder,
+                    missionPackDetector);
         }
         else if (engine?.Game == QuakeGame.Quake2)
         {
-            if (string.Equals(
-                engine.Name,
-                "Quake II GOG",
-                StringComparison.OrdinalIgnoreCase))
-            {
-                missionPacks =
-                    missionPackDetector2
-                        .DetectGogMissionPacks(detectionFolder);
-            }
-            else
-            {
-                missionPacks =
-                    missionPackDetector2
-                        .DetectMissionPacks(detectionFolder);
-            }
+            missionPacks =
+                quake2Handler.DetectMissionPacks(
+                    engine,
+                    detectionFolder,
+                    missionPackDetector2);
         }
         else
         {
             missionPacks =
                 missionPackDetector
                     .DetectMissionPacks(detectionFolder);
-
-            AddQuakeSteamEnhancedMissionPacks(
-                missionPacks,
-                detectionFolder);
-        }
-
-        if (engine?.Game == QuakeGame.Quake1)
-        {
-            string rereleaseFolder =
-                Path.Combine(
-                    detectionFolder,
-                    "rerelease");
-
-            bool hasRerelease =
-                Directory.Exists(rereleaseFolder);
-
-            // For Quake GOG, display only the rerelease folder.
-            bool isQuake1Gog =
-                string.Equals(
-                    engine.Name,
-                    "Quake GOG",
-                    StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(
-                    engine.Name,
-                    "Quake 1 GOG",
-                    StringComparison.OrdinalIgnoreCase);
-
-            if (isQuake1Gog && hasRerelease)
-            {
-                missionPacks =
-                    missionPacks
-                        .Where(
-                            missionPack =>
-                                missionPack.DetectedDirectory?
-                                    .StartsWith(
-                                        "rerelease" + Path.DirectorySeparatorChar,
-                                        StringComparison.OrdinalIgnoreCase) == true ||
-                                missionPack.DetectedDirectory?
-                                    .StartsWith(
-                                        "rerelease/",
-                                        StringComparison.OrdinalIgnoreCase) == true ||
-                                missionPack.DetectedDirectory?
-                                    .StartsWith(
-                                        "rerelease\\",
-                                        StringComparison.OrdinalIgnoreCase) == true)
-                        .ToList();
-            }
-
-            missionPacks.RemoveAll(
-                missionPack =>
-                    string.Equals(
-                        missionPack.Name,
-                        "rerelease",
-                        StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(
-                        missionPack.DetectedDirectory,
-                        "rerelease",
-                        StringComparison.OrdinalIgnoreCase));
-
-            MissionPack? captureTheFlag =
-                missionPacks.FirstOrDefault(
-                    missionPack =>
-                        string.Equals(
-                            missionPack.DetectedDirectory,
-                            "ctf",
-                            StringComparison.OrdinalIgnoreCase));
-
-            if (captureTheFlag != null)
-            {
-                captureTheFlag.Name =
-                    "Capture the Flag";
-
-                missionPacks.Remove(captureTheFlag);
-
-                int lastKnownEpisodeIndex =
-                    missionPacks.FindLastIndex(
-                        missionPack =>
-                            string.Equals(
-                                missionPack.DetectedDirectory,
-                                "mg3",
-                                StringComparison.OrdinalIgnoreCase));
-
-                if (lastKnownEpisodeIndex >= 0)
-                {
-                    missionPacks.Insert(
-                        lastKnownEpisodeIndex + 1,
-                        captureTheFlag);
-                }
-                else
-                {
-                    missionPacks.Add(captureTheFlag);
-                }
-            }
         }
 
         foreach (MissionPack missionPack in missionPacks)
@@ -1511,81 +1157,11 @@ public partial class MainWindow : Window
         else
         {
             StatusText.Text =
-                "No Quake game directories found.";
+                "No Quake game folder(s) detected.";
         }
 
         DetectMaps();
         DetectDemos();
-    }
-
-    private static void AddQuakeSteamEnhancedMissionPacks(
-        List<MissionPack> missionPacks,
-        string quakeFolder)
-    {
-        string rereleaseFolder =
-            Path.Combine(
-                quakeFolder,
-                "rerelease");
-
-        if (!Directory.Exists(rereleaseFolder))
-        {
-            return;
-        }
-
-        string[] enhancedDirectories =
-        {
-            "id1",
-            "hipnotic",
-            "rogue",
-            "dopa",
-            "mg1",
-            "mg3",
-            "ctf"
-        };
-
-        string[] enhancedNames =
-        {
-            "Quake (Enhanced)",
-            "Scourge of Armagon (Enhanced)",
-            "Dissolution of Eternity (Enhanced)",
-            "Dimension of the Past (Enhanced)",
-            "Dimension of the Machine (Enhanced)",
-            "Dawn of the Machine (Enhanced)",
-            "Capture the Flag (Enhanced)"
-        };
-
-        List<MissionPack> enhancedMissionPacks = new();
-
-        for (int i = 0; i < enhancedDirectories.Length; i++)
-        {
-            string directory =
-                enhancedDirectories[i];
-
-            string enhancedPath =
-                Path.Combine(
-                    rereleaseFolder,
-                    directory);
-
-            if (!Directory.Exists(enhancedPath))
-            {
-                continue;
-            }
-
-            enhancedMissionPacks.Add(
-                new MissionPack
-                {
-                    Name = enhancedNames[i],
-                    DetectedDirectory =
-                        Path.Combine(
-                            "rerelease",
-                            directory)
-                });
-        }
-
-        // Put the Enhanced episodes first, in the official order.
-        missionPacks.InsertRange(
-            0,
-            enhancedMissionPacks);
     }
 
     private string GetEpisodeFolder(MissionPack missionPack)
@@ -1739,6 +1315,23 @@ public partial class MainWindow : Window
 
         foreach (MapInfo map in maps)
         {
+            string mapFileName =
+                Path.GetFileNameWithoutExtension(
+                    map.FileName)?.Trim() ?? "";
+
+            string mapTitle =
+                map.Title?.Trim() ?? "";
+
+            if (!string.Equals(
+                    mapFileName,
+                    mapTitle,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                map.Title =
+                    CapitalizeFirstLetter(
+                        map.Title);
+            }
+
             if (MapIsInsidePk3OrZip(
                 map.FileName,
                 gameFolder))
@@ -1759,116 +1352,50 @@ public partial class MainWindow : Window
 
         if (!restoreMapSelectionCleared)
         {
-            if (!isQuake2)
+            string? defaultMap =
+                isQuake2
+                    ? quake2Handler.GetDefaultMap(
+                        missionPack,
+                        engine)
+                    : quakeHandler.GetDefaultMap(
+                        missionPack);
+
+            int defaultIndex = -1;
+
+            if (!string.IsNullOrWhiteSpace(defaultMap))
             {
-                int startIndex =
+                int mapIndex =
                     maps.FindIndex(
                         map => string.Equals(
-                            map.FileName,
-                            "start.bsp",
+                            Path.GetFileNameWithoutExtension(
+                                map.FileName),
+                            Path.GetFileNameWithoutExtension(
+                                defaultMap),
                             StringComparison.OrdinalIgnoreCase));
 
-                if (startIndex >= 0)
+                if (mapIndex >= 0)
                 {
-                    // INDEX 0 is "None" so real maps start at INDEX 1.
-                    MapComboBox.SelectedIndex =
-                        startIndex + 1;
+                    defaultIndex = mapIndex + 1;
                 }
-                else if (MapComboBox.Items.Count > 1)
-                {
-                    MapComboBox.SelectedIndex = 1;
-                }
-                else
-                {
-                    MapComboBox.SelectedIndex = 0;
-                }
+            }
+
+            if (defaultIndex > 0)
+            {
+                MapComboBox.SelectedIndex =
+                    defaultIndex;
+            }
+            else if (MapComboBox.Items.Count > 1)
+            {
+                MapComboBox.SelectedIndex = 1;
             }
             else
             {
-                string? defaultMap =
-                    GetQuake2GogDefaultMap(
-                        missionPack,
-                        engine);
-
-                int defaultIndex = -1;
-
-                if (!string.IsNullOrWhiteSpace(defaultMap))
-                {
-                    int mapIndex =
-                        maps.FindIndex(
-                            map => string.Equals(
-                                Path.GetFileNameWithoutExtension(
-                                    map.FileName),
-                                Path.GetFileNameWithoutExtension(
-                                    defaultMap),
-                                StringComparison.OrdinalIgnoreCase));
-
-                    if (mapIndex >= 0)
-                    {
-                        defaultIndex = mapIndex + 1;
-                    }
-                }
-
-                if (defaultIndex > 0)
-                {
-                    MapComboBox.SelectedIndex =
-                        defaultIndex;
-                }
-                else if (MapComboBox.Items.Count > 1)
-                {
-                    MapComboBox.SelectedIndex = 1;
-                }
-                else
-                {
-                    MapComboBox.SelectedIndex = 0;
-                }
+                MapComboBox.SelectedIndex = 0;
             }
         }
 
         UpdateMapToolTip();
         UpdateCommandArguments();
-    }
-
-    private string? GetQuake2GogDefaultMap(
-        MissionPack missionPack,
-        Engine? engine)
-    {
-        if (engine?.Game != QuakeGame.Quake2)
-        {
-            return null;
-        }
-
-        // Q2Pro-NG starts on Outer Base.
-        if (string.Equals(
-                engine.Name,
-                "Q2Pro-NG",
-                StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(
-                missionPack.Name,
-                "Quake II",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return "base1.bsp";
-        }
-
-        if (!string.Equals(
-                engine.Name,
-                "Quake II GOG",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        return missionPack.Name switch
-        {
-            "Quake II" => "base1.bsp",
-            "The Reckoning" => "badlands.bsp",
-            "Ground Zero" => "rammo1.bsp",
-            "Quake II 64" => "outpost.bsp",
-            "Call of the Machine" => "mguhub.bsp",
-            "Call of the Void" => "voidhub.bsp",
-            _ => null
-        };
     }
 
     private void DetectDemos()
@@ -1886,9 +1413,6 @@ public partial class MainWindow : Window
         Engine? engine =
             EngineComboBox.SelectedItem as Engine;
 
-        // When no engine is detected, keep the Demo selector in the same
-        // neutral state used by DetectEngines: enabled, normal text and
-        // no forced "None" selection.
         if (engine == null)
         {
             DemoComboBox.IsEnabled = true;
@@ -1933,9 +1457,14 @@ public partial class MainWindow : Window
 
         if (!Directory.Exists(gameFolder))
         {
+            // A root-level PK3/ZIP mission pack has no physical episode
+            // directory. Fall back to the resolved engine game root.
             if (string.IsNullOrWhiteSpace(missionPack.GameDirectory))
             {
-                gameFolder = QuakeFolderTextBox.Text.Trim();
+                gameFolder =
+                    GetEngineGameFolder(
+                        engine,
+                        QuakeFolderTextBox.Text.Trim());
             }
             else
             {
@@ -1946,12 +1475,33 @@ public partial class MainWindow : Window
         }
 
         List<Demo> demos =
-            engine?.Game == QuakeGame.Quake2
-                ? demoDetector2.DetectDemos(gameFolder)
-                : demoDetector.DetectDemos(gameFolder);
+            engine.Game == QuakeGame.Quake2
+                ? quake2Handler.DetectDemosForEpisode(
+                    gameFolder,
+                    engine,
+                    missionPack)
+                : quakeHandler.DetectQuake1Demos(gameFolder);
 
+        // A Quake 2 demo may be returned by another detector with its name
+        // already formatted as "filename | title". Do not format that
+        // string again. Demo model's MapTitle is the title field.
         foreach (Demo demo in demos)
         {
+            if (!string.IsNullOrWhiteSpace(demo.FileName))
+            {
+                string title =
+                    !string.IsNullOrWhiteSpace(demo.MapTitle)
+                        ? demo.MapTitle
+                        : demo.Name;
+
+                title =
+                    CapitalizeFirstLetter(
+                        title);
+
+                demo.Name =
+                    $"{demo.FileName} | {title}";
+            }
+
             DemoComboBox.Items.Add(demo);
         }
 
@@ -1959,6 +1509,20 @@ public partial class MainWindow : Window
         UpdateDemoControlsState();
         UpdateDemoToolTip();
         UpdateCommandArguments();
+    }
+
+    private static string CapitalizeFirstLetter(
+        string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value ?? "";
+        }
+
+        string text = value.Trim();
+
+        return char.ToUpperInvariant(text[0]) +
+               text[1..];
     }
 
     private void UpdateDemoControlsState()
@@ -2145,7 +1709,7 @@ public partial class MainWindow : Window
         else
         {
             StatusText.Text =
-                "No supported Quake engine was found.";
+                "No Quake engine(s) detected.";
         }
     }
 
@@ -2203,7 +1767,7 @@ public partial class MainWindow : Window
         else
         {
             StatusText.Text =
-                "No Quake game directories found.";
+                "No Quake game folder(s) detected.";
         }
     }
 
@@ -2231,6 +1795,7 @@ public partial class MainWindow : Window
         object sender,
         SelectionChangedEventArgs e)
     {
+        UpdateMissionToolTip();
         DetectMaps();
         DetectDemos();
 
@@ -2525,8 +2090,17 @@ public partial class MainWindow : Window
                 Environment.GetFolderPath(
                     Environment.SpecialFolder.DesktopDirectory);
 
+            string mapTitle =
+                selectedMap == null ||
+                string.IsNullOrWhiteSpace(selectedMap.FileName)
+                    ? ""
+                    : selectedMap.Title?.Trim() ?? "";
+
+            // Desktop shortcut name format.
             string shortcutName =
-                $"Launch {engine.Name} - {missionPack.Name}.lnk";
+                string.IsNullOrWhiteSpace(mapTitle)
+                    ? $"Launch {engine.Name} - {missionPack.Name}.lnk"
+                    : $"Launch {engine.Name} - {missionPack.Name} - {mapTitle}.lnk";
 
             shortcutName =
                 SanitizeFileName(shortcutName);
@@ -2899,7 +2473,6 @@ public partial class MainWindow : Window
         return arguments;
     }
 
-
     private List<string> BuildQuake1AutomaticLaunchArguments()
     {
         MissionPack? missionPack =
@@ -2952,7 +2525,7 @@ public partial class MainWindow : Window
                     selectedMap.FileName);
         }
 
-        // Quake difficulty
+        // Quake difficulty.
         if (DifficultyComboBox.SelectedItem is Difficulty difficulty &&
             difficulty.Value >= 0)
         {
@@ -3005,7 +2578,6 @@ public partial class MainWindow : Window
         List<string> arguments = new();
 
         // The engine runs with its own folder as the working directory.
-
         // Quake 2 uses +set game for mission packs/mods.
         // baseq2 is the default game directory.
         if (missionPack != null &&
@@ -3041,7 +2613,7 @@ public partial class MainWindow : Window
                     selectedMap.FileName);
         }
 
-        // Quake 2 difficulty
+        // Quake 2 difficulty.
         if (DifficultyComboBox.SelectedItem is Difficulty difficulty &&
             difficulty.Value >= 0)
         {
@@ -3218,6 +2790,102 @@ public partial class MainWindow : Window
         {
             result.Add(current);
         }
+
+        return result;
+    }
+
+    private MessageBoxResult ShowMainQuakeFolderWarning(
+        out bool dontShowAgain)
+    {
+        System.Windows.Controls.CheckBox checkBox =
+            new System.Windows.Controls.CheckBox
+            {
+                Content = "Don't show this message again",
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+
+        System.Windows.Controls.TextBlock message =
+            new System.Windows.Controls.TextBlock
+            {
+                Text =
+                    "TQLauncher did not detect a main Quake folder so episode\n" +
+                    "and map detection could be problematic. Continue?",
+                TextWrapping = TextWrapping.Wrap
+            };
+
+        System.Windows.Controls.Button yesButton =
+            new System.Windows.Controls.Button
+            {
+                Content = "Yes",
+                Width = 75,
+                IsDefault = true,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+
+        System.Windows.Controls.Button noButton =
+            new System.Windows.Controls.Button
+            {
+                Content = "No",
+                Width = 75,
+                IsCancel = true
+            };
+
+        System.Windows.Controls.StackPanel buttons =
+            new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment =
+                    System.Windows.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 18, 0, 0)
+            };
+
+        buttons.Children.Add(yesButton);
+        buttons.Children.Add(noButton);
+
+        System.Windows.Controls.StackPanel content =
+            new System.Windows.Controls.StackPanel
+            {
+                Margin = new Thickness(20)
+            };
+
+        content.Children.Add(message);
+        content.Children.Add(checkBox);
+        content.Children.Add(buttons);
+
+        Window dialog =
+            new Window
+            {
+                Title = "Warning",
+                Content = content,
+                Owner = this,
+                WindowStartupLocation =
+                    WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                ShowInTaskbar = false
+            };
+
+        MessageBoxResult result =
+            MessageBoxResult.No;
+
+        yesButton.Click +=
+            (_, _) =>
+            {
+                result = MessageBoxResult.Yes;
+                dialog.DialogResult = true;
+            };
+
+        noButton.Click +=
+            (_, _) =>
+            {
+                result = MessageBoxResult.No;
+                dialog.DialogResult = false;
+            };
+
+        dialog.ShowDialog();
+
+        dontShowAgain =
+            checkBox.IsChecked == true;
 
         return result;
     }
@@ -3470,7 +3138,7 @@ public partial class MainWindow : Window
             Process.Start(startInfo);
 
             StatusText.Text =
-                $"{engine.Name} is ready with custom settings.";
+                $"{engine.Name} is set to run with custom settings.";
 
             if (CloseAfterLaunchCheckBox.IsChecked == true)
             {

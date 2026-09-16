@@ -86,13 +86,18 @@
                     Height="26"
                     FontSize="25"
                     FontWeight="Bold"
+                    RenderTransformOrigin="0.5,0.5"
                     TextAlignment="Center"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Padding="0"
                     LineHeight="27"
                     LineStackingStrategy="BlockLineHeight"
-                    Margin="0,-2,0,0"/>
+                    Margin="0,-2,0,0">
+                    <TextBlock.RenderTransform>
+                        <RotateTransform Angle="0"/>
+                    </TextBlock.RenderTransform>
+                </TextBlock>
             </Button>
         </Grid>
 
@@ -130,13 +135,18 @@
                     Height="26"
                     FontSize="25"
                     FontWeight="Bold"
+                    RenderTransformOrigin="0.5,0.5"
                     TextAlignment="Center"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Padding="0"
                     LineHeight="27"
                     LineStackingStrategy="BlockLineHeight"
-                    Margin="0,-2,0,0"/>
+                    Margin="0,-2,0,0">
+                    <TextBlock.RenderTransform>
+                        <RotateTransform Angle="0"/>
+                    </TextBlock.RenderTransform>
+                </TextBlock>
             </Button>
         </Grid>
 
@@ -475,7 +485,7 @@
                 VerticalAlignment="Center"/>
             <TextBlock
                 Grid.Column="1"
-                Text="v0.9.7"
+                Text="v0.9.8"
                 Foreground="#B0B0B0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"/>
