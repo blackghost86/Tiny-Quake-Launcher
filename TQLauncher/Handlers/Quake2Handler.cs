@@ -20,6 +20,7 @@ public class Quake2Handler
             "quake2.exe",
             StringComparison.OrdinalIgnoreCase);
     }
+
     public static List<MissionPack> DetectClassicQuake2Folders(
         string quakeFolder)
     {
@@ -79,6 +80,23 @@ public class Quake2Handler
 
         return missionPacks;
     }
+
+    private static string? DecodeQuake2DemoTitle(
+        byte[] data)
+    {
+        try
+        {
+            using MemoryStream stream =
+                new(data);
+            return GetQuake2DemoTitleFromStream(
+                stream);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static bool ContainsGameDirectory(
         string folder,
         QuakeGame game)
@@ -106,6 +124,7 @@ public class Quake2Handler
                 Directory.Exists(
                     Path.Combine(folder, directory)));
     }
+
     public string GetEngineGameFolder(
         Engine engine,
         string quakeFolder)
@@ -156,7 +175,6 @@ public class Quake2Handler
         // nearest folder containing a recognized Quake 2 game directory.
         // This resolves each engine to its own installation when the user
         // selects a parent folder containing multiple Quake 2 installs.
-        // Unlike the old fallback, never guess an arbitrary child folder.
         string candidate = currentFolder;
 
         while (true)
@@ -213,6 +231,7 @@ public class Quake2Handler
         // accidentally combine unrelated installations.
         return quakeFolder;
     }
+
     public List<MissionPack> DetectMissionPacks(
         Engine engine,
         string detectionFolder,
@@ -235,6 +254,7 @@ public class Quake2Handler
         return missionPackDetector2
             .DetectMissionPacks(detectionFolder);
     }
+
     public string? GetDefaultMap(
         MissionPack missionPack,
         Engine? engine)
@@ -276,6 +296,7 @@ public class Quake2Handler
             _ => null
         };
     }
+
     public List<Demo> DetectDemosForEpisode(
         string gameFolder,
         Engine engine,
@@ -391,8 +412,8 @@ public class Quake2Handler
             // Ignore inaccessible directories/files.
         }
 
-        // Quake 2 installations commonly keep demos inside PAK or PK3
-        // archives. Search every archive below the selected episode so this
+        // Quake 2 installations commonly keep demos inside PAK or PK3.
+        // Search every archive below the selected episode so this
         // also works for GOG, Steam and similar installations.
         try
         {
@@ -449,6 +470,7 @@ public class Quake2Handler
                 StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
     private static HashSet<string>? GetQuake2AllowedDemoNames(
         Engine engine,
         MissionPack missionPack)
@@ -481,7 +503,8 @@ public class Quake2Handler
 
                 "Ground Zero" =>
                     new HashSet<string>(
-                        new[] { "rdemo1.dm2", "rdemo2.dm2", "rdemo3.dm2" },
+                        // GOG Ground Zero does not include a third demo.
+                        new[] { "rdemo1.dm2", "rdemo2.dm2" },
                         StringComparer.OrdinalIgnoreCase),
 
                 "Capture the Flag" =>
@@ -529,6 +552,7 @@ public class Quake2Handler
 
         return null;
     }
+
     private static void AddQuake2PakDemos(
         List<Demo> demos,
         HashSet<string> seenDemoNames,
@@ -688,6 +712,7 @@ public class Quake2Handler
             // Ignore invalid/inaccessible PAK files.
         }
     }
+
     private static void AddQuake2ZipDemos(
         List<Demo> demos,
         HashSet<string> seenDemoNames,
@@ -776,6 +801,7 @@ public class Quake2Handler
             // Ignore invalid/inaccessible ZIP/PK3 files.
         }
     }
+
     private static string? GetQuake2DemoTitleFromFile(
         string demoFile)
     {
@@ -793,6 +819,7 @@ public class Quake2Handler
             return null;
         }
     }
+
     private static string? GetQuake2DemoTitleFromPakEntry(
         string pakFile,
         int entryOffset,
@@ -857,6 +884,7 @@ public class Quake2Handler
             return null;
         }
     }
+
     private static string? GetQuake2DemoTitleFromZipEntry(
         ZipArchiveEntry entry)
     {
@@ -882,6 +910,7 @@ public class Quake2Handler
             return null;
         }
     }
+
     private static string? GetQuake2DemoTitleFromStream(
         Stream stream)
     {
@@ -1013,6 +1042,7 @@ public class Quake2Handler
             return null;
         }
     }
+
     private static string? TryReadQuake2ConfigStringName(
         byte[] message)
     {
@@ -1023,7 +1053,8 @@ public class Quake2Handler
                  position + 3 < message.Length;
                  position++)
             {
-                if (message[position] != 13) // svc_configstring
+                // svc_configstring
+                if (message[position] != 13) 
                 {
                     continue;
                 }
@@ -1071,13 +1102,16 @@ public class Quake2Handler
 
         return null;
     }
+
     private static string? TryReadQuake2ServerDataLevelName(
         byte[] message)
     {
         try
         {
             if (message.Length < 2 ||
-                message[0] != 12) // svc_serverdata
+            
+                // svc_serverdata
+                message[0] != 12) 
             {
                 return null;
             }
@@ -1089,21 +1123,24 @@ public class Quake2Handler
                 return null;
             }
 
-            position += 4; // protocol
+            // protocol
+            position += 4; 
 
             if (position + 4 > message.Length)
             {
                 return null;
             }
 
-            position += 4; // server count
+            // server count
+            position += 4; 
 
             if (position >= message.Length)
             {
                 return null;
             }
 
-            position++; // attract loop
+            // attract loop
+            position++; 
 
             // game directory
             ReadNullTerminatedAscii(
@@ -1115,7 +1152,8 @@ public class Quake2Handler
                 return null;
             }
 
-            position += 2; // player number
+            // player number
+            position += 2; 
 
             return ReadNullTerminatedAscii(
                 message,
@@ -1126,6 +1164,7 @@ public class Quake2Handler
             return null;
         }
     }
+
     private static string ReadNullTerminatedAscii(
         byte[] data,
         ref int position)
@@ -1154,6 +1193,7 @@ public class Quake2Handler
 
         return "";
     }
+
     private static string DecodePakCString(byte[] bytes)
     {
         int length =

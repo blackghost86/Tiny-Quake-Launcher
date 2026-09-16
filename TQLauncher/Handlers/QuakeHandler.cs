@@ -27,9 +27,7 @@ public class QuakeHandler
             "id1",
             "hipnotic",
             "rogue",
-            "ctf",
-            "quoth",
-            "nehahra"
+            "ctf"
         };
 
         string[] knownNames =
@@ -37,9 +35,7 @@ public class QuakeHandler
             "Quake",
             "Scourge of Armagon",
             "Dissolution of Eternity",
-            "Capture the Flag",
-            "Quoth",
-            "Nehara"
+            "Capture the Flag"
         };
 
         // Only these known Quake folders are displayed.
@@ -184,6 +180,18 @@ public class QuakeHandler
         string detectionFolder,
         MissionPackDetector missionPackDetector)
     {
+        // Ironwail is commonly installed in its own subfolder next to id1,
+        // hipnotic, rogue, etc. Treat the folder containing the Quake data
+        // as the game-data root rather than treating the Ironwail folder
+        // itself as the Quake installation.
+        if (IsIronwail(engine))
+        {
+            detectionFolder =
+                GetIronwailGameFolder(
+                    engine,
+                    detectionFolder);
+        }
+
         List<MissionPack> missionPacks;
 
         if (IsClassicQuakeExecutable(engine.ExecutablePath))
@@ -289,6 +297,158 @@ public class QuakeHandler
         }
 
         return missionPacks;
+    }
+
+    private static bool IsIronwail(Engine engine)
+    {
+        if (engine == null)
+        {
+            return false;
+        }
+
+        string executableName =
+            Path.GetFileName(
+                engine.ExecutablePath);
+
+        return
+            string.Equals(
+                executableName,
+                "ironwail.exe",
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(
+                engine.Name,
+                "Ironwail",
+                StringComparison.OrdinalIgnoreCase);
+    }
+
+    public string GetIronwailGameFolder(
+        Engine engine,
+        string selectedFolder)
+    {
+        if (!IsIronwail(engine))
+        {
+            return selectedFolder;
+        }
+
+        if (string.IsNullOrWhiteSpace(selectedFolder) ||
+            !Directory.Exists(selectedFolder))
+        {
+            return selectedFolder;
+        }
+
+        string? engineDirectory =
+            Path.GetDirectoryName(
+                engine.ExecutablePath);
+
+        if (string.IsNullOrWhiteSpace(engineDirectory) ||
+            !Directory.Exists(engineDirectory))
+        {
+            return selectedFolder;
+        }
+
+        string rootFolder =
+            Path.GetFullPath(selectedFolder)
+                .TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar);
+
+        string currentFolder =
+            Path.GetFullPath(engineDirectory)
+                .TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar);
+
+        // Walk upward when Ironwail is actually below the selected folder.
+        bool isInsideSelectedFolder =
+            string.Equals(
+                currentFolder,
+                rootFolder,
+                StringComparison.OrdinalIgnoreCase) ||
+            currentFolder.StartsWith(
+                rootFolder + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase) ||
+            currentFolder.StartsWith(
+                rootFolder + Path.AltDirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase);
+
+        if (!isInsideSelectedFolder)
+        {
+            return selectedFolder;
+        }
+
+        string candidate = currentFolder;
+
+        while (true)
+        {
+            if (ContainsQuakeGameDirectory(candidate))
+            {
+                return candidate;
+            }
+
+            if (string.Equals(
+                    candidate,
+                    rootFolder,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                break;
+            }
+
+            DirectoryInfo? parent =
+                Directory.GetParent(candidate);
+
+            if (parent == null)
+            {
+                break;
+            }
+
+            candidate =
+                parent.FullName
+                    .TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar);
+        }
+
+        // If no recognised Quake data directory was found, keep the user's
+        // selected folder instead of incorrectly using Ironwail's
+        // executable folder as the game-data root.
+        return selectedFolder;
+    }
+
+    private static bool ContainsQuakeGameDirectory(
+        string folder)
+    {
+        string[] directories =
+        {
+            "id1",
+            "hipnotic",
+            "rogue",
+            "ctf",
+            "rerelease"
+        };
+
+        return directories.Any(
+            directory =>
+                Directory.Exists(
+                    Path.Combine(
+                        folder,
+                        directory)));
+    }
+
+    public string GetDefaultMap(MissionPack missionPack)
+    {
+        if (string.Equals(
+                missionPack?.Name,
+                "Nehahra",
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(
+                missionPack?.DetectedDirectory,
+                "nehahra",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "nehstart.bsp";
+        }
+
+        return "start.bsp";
     }
 
     public List<Demo> DetectQuake1Demos(string gameFolder)
