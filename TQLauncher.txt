@@ -33,6 +33,7 @@ Other:
 - Shared folder support - done (v0.9.4)
 - Parent folder support for all engines - done (v0.9.7)
 - Support for other games - not planned yet
+- Linux version - not planned yet
 
 Installation
 --------------------------------------------------------------------------
@@ -45,9 +46,27 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 --------------------------------------------------------------------------
+0.9.8:
+- Added support for Q2REPro (replacement of the Q2 rerelease engine).
+- Added a small checkbox for the parent folder warning message.
+- Added support for Quoth and Nehahra game mods.
+- Added tooltip for longer episode names.
+- Added map title to desktop shortcut.
+- Added spacing before game folder address.
+- Renamed bottom text message and warning when no engine detected.
+- Renamed bottom text message when no episode detected.
+- Renamed bottom text message when engine is ready.
+- Fixed Ironwail support from within a subdir.
+- Fixed demo detection for Quake 2 GOG and Steam Edition(s).
+- Fixed demos for Quake II 64 and Vanilla Quake II.
+- Fixed demos for newer eps: Call of the Machine/Void.
+- Fixed demos for custom mods (except mods via progs.dat).
+- Fixed double demo filenames for official Quake eps.
+- Capitalized map titles that have small letter.
+
 0.9.7:
 - Added two new buttons to refresh engine(s) and refresh episode(s).
-- Added a warning message if the main folder selected is a root folder.
+- Added a warning message if the main folder selected is a parent folder.
 - Added an error if no engine found and game is launched.
 - Added bottom message for clear buttons.
 - Command line args are now editable.
@@ -65,7 +84,7 @@ Changelog
 - Fixed width for game address bar and browse button.
 - Renamed game(s) to episode(s) in bottom message.
 - Renamed no supported engine warning.
-- Renamed desktop shortcut message.
+- Renamed title for desktop shortcut message.
 
 0.9.6:
 - Additional files created by their engines stay in the same folder.
