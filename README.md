@@ -19,17 +19,18 @@ Quake:
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
 - Quake GOG + Quake (Steam) support - done (v0.9.6)
 - Vanilla Quake support - done (v0.9.6)
-- Multiplayer support - in progress (v1.0)
+- Multiplayer support - work in progress (v1.0)
 
 Quake 2:
 - Quake 2 support - done (v0.7)
 - Quake 2 GOG + Quake 2 (Steam) support - done (v0.9.5)
 - Call of the Void (2025) support - done (v0.9.5)
-- Vanilla Quake 2 (Win 95 version) support - done (v0.9.6)
+- Vanilla Quake 2 (for Win 95) support - done (v0.9.6)
 - Multiplayer support - not started yet
 
 Quake 3:
-- Initial base game + expansion support - done (v0.9.9)
+- Base game + expansion support - done (v0.9.9)
+- Proper support - work in progress
 
 All games:
 - Demo support for Quake 1 + 2 - done (v0.9.2)
