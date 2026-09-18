@@ -1,5 +1,5 @@
 # Tiny Quake Launcher
-A simple launcher for Quake, Quake 2 and their mods/mission packs.
+A simple launcher for Quake 1/2/3 and their mods/mission packs.
 
 <img width="380" height="577" alt="image" src="https://github.com/user-attachments/assets/64673456-870e-4957-8f73-f686e6efffa8" />
 
@@ -12,20 +12,26 @@ A simple launcher for Quake, Quake 2 and their mods/mission packs.
 - Difficulty settings for any existing map.
 - Command line preview based on custom selection.
 - Extra arguments that can be added manually.
+- Custom resolution support/arguments.
 
 # Features planned
 Quake:
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
-- Demo support for Quake 1 + 2 - done (v0.9.2)
 - Quake GOG + Vanilla Quake support - done (v0.9.6)
 - Multiplayer support - in progress (v1.0)
 
 Quake 2:
 - Quake 2 support - done (v0.7)
-- Demo support for Quake 1 + 2 - done (v0.9.2)
 - Quake 2 GOG + Call of the Void (2025) support - done (v0.9.5)
 - Vanilla Quake 2 (Win 95 version) support - done (v0.9.6)
 - Multiplayer support - not started yet
+
+Quake 3:
+- Initial base game + expansion support - done (v0.9.9)
+
+All games:
+- Demo support for Quake 1 + 2 - done (v0.9.2)
+- Custom resolution support - done (v0.9.9)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
