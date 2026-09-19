@@ -1,6 +1,6 @@
 Tiny Quake Launcher
 --------------------------------------------------------------------------
-A simple launcher for Quake, Quake 2 and their mods/mission packs.
+A simple launcher for Quake 1/2/3 and their mods/mission packs.
 
 Features
 --------------------------------------------------------------------------
@@ -12,21 +12,30 @@ Features
 - Difficulty settings for any existing map.
 - Command line preview based on custom selection.
 - Extra arguments that can be added manually.
+- Custom resolution support/arguments.
 
 Features planned
 --------------------------------------------------------------------------
 Quake:
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
-- Demo support for Quake 1 + 2 - done (v0.9.2)
-- Quake GOG + Vanilla Quake support - done (v0.9.6)
-- Multiplayer support - in progress (v1.0)
+- Quake GOG + Quake (Steam) support - done (v0.9.6)
+- Vanilla Quake support - done (v0.9.6)
+- Multiplayer support - work in progress (v1.0)
 
 Quake 2:
 - Quake 2 support - done (v0.7)
-- Demo support for Quake 1 + 2 - done (v0.9.2)
-- Quake 2 GOG + Call of the Void (2025) support - done (v0.9.5)
+- Quake 2 GOG + Quake 2 (Steam) support - done (v0.9.5)
+- Call of the Void (2025) support - done (v0.9.5)
 - Vanilla Quake 2 (Win 95 version) support - done (v0.9.6)
 - Multiplayer support - not started yet
+
+Quake 3:
+- Initial base game + expansion support - done (v0.9.9)
+- Proper multiplayer support - in progress
+
+All games:
+- Demo support for Quake 1 + 2 - done (v0.9.2)
+- Custom resolution support - done (v0.9.9)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
@@ -46,6 +55,22 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 --------------------------------------------------------------------------
+0.9.9:
+- Added custom resolution support (all games) + clear resolution button.
+- Added Quake 3 support for base game + expansion.
+- Added more space between the two buttons near extra args textbox.
+- Resolution drop-down should be empty if no engine detected.
+- Episode refresh button should be unavailable if no engine detected.
+- Changed refresh symbol to actual refresh_32x32.png.
+- Fixed engine detection for QS and QSS if placed inside a subdir.
+- Fixed episode detection for Q2 Steam, Q2 GOG and Q2Pro-NG.
+- Fixed empty difficulty selection and default difficulty.
+- Fixed demo detection for Quake 3.
+- Fixed resolution list and arguments for Quake 2.
+- Fixed resolutions for Q1/Q2 when a parent folder is selected.
+- Renamed longer engine names like QuakeWorld Client.
+- Renamed clear resolution button tooltip.
+
 0.9.8:
 - Added support for Q2REPro (replacement of the Q2 rerelease engine).
 - Added a small checkbox for the parent folder warning message.
