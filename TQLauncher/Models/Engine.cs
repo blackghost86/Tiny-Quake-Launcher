@@ -12,8 +12,11 @@ public class Engine
 
     public override string ToString()
     {
-        return Game == QuakeGame.Quake2
-            ? $"{Name} | Quake 2"
-            : $"{Name} | Quake";
+        return Game switch
+        {
+            QuakeGame.Quake2 => $"{Name} | Quake 2",
+            QuakeGame.Quake3 => $"{Name} | Quake 3",
+            _ => $"{Name} | Quake"
+        };
     }
 }
