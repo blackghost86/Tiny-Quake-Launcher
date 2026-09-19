@@ -18,6 +18,8 @@ public class LauncherSettings
 {
     public string QuakeFolder { get; set; } = "";
 
+    public string Resolution { get; set; } = "";
+
     public string EnginePath { get; set; } = "";
 
     public QuakeGame EngineGame { get; set; } = QuakeGame.Quake1;
@@ -49,15 +51,21 @@ public partial class MainWindow : Window
 
     private readonly EngineDetector2 engineDetector2 = new();
 
+    private readonly EngineDetector3 engineDetector3 = new();
+
     private readonly MissionPackDetector missionPackDetector = new();
 
     private readonly MissionPackDetector2 missionPackDetector2 = new();
+
+    private readonly MissionPackDetector3 missionPackDetector3 = new();
 
     private readonly MapDetector MapDetector = new();
 
     private readonly MapDetector2 MapDetector2 = new();
 
     private readonly DemoDetector2 demoDetector2 = new();
+
+    private readonly DemoDetector3 demoDetector3 = new();
 
     private readonly QuakeHandler quakeHandler = new();
 
@@ -131,6 +139,13 @@ public partial class MainWindow : Window
 
         MissionComboBox.SizeChanged +=
             MissionComboBox_SizeChanged;
+
+        restoringSavedSelections = true;
+        SetupResolutions();
+        restoringSavedSelections = false;
+
+        ClearResolutionButton.IsEnabled = false;
+        RefreshEpisodesButton.IsEnabled = false;
 
         LoadSavedQuakeFolder();
 
@@ -291,6 +306,15 @@ public partial class MainWindow : Window
             settings.QuakeFolder =
                 QuakeFolderTextBox.Text.Trim();
 
+            Resolution? selectedResolution =
+                ResolutionComboBox.SelectedItem as Resolution;
+
+            settings.Resolution =
+                selectedResolution != null &&
+                !selectedResolution.IsDefault
+                    ? selectedResolution.DisplayName
+                    : "";
+
             Engine? engine =
                 EngineComboBox.SelectedItem as Engine;
 
@@ -353,6 +377,24 @@ public partial class MainWindow : Window
     private void RestoreSavedSelections(
         LauncherSettings settings)
     {
+        if (!string.IsNullOrWhiteSpace(settings.Resolution))
+        {
+            Resolution? resolution =
+                ResolutionComboBox.Items
+                    .OfType<Resolution>()
+                    .FirstOrDefault(
+                        item => string.Equals(
+                            item.DisplayName,
+                            settings.Resolution,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (resolution != null)
+            {
+                ResolutionComboBox.SelectedItem =
+                    resolution;
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(settings.EnginePath))
         {
             Engine? engine =
@@ -369,6 +411,10 @@ public partial class MainWindow : Window
             {
                 EngineComboBox.SelectedItem =
                     engine;
+
+                // Rebuild resolutions for the saved engine even while the
+                // normal selection-change handler is suppressed.
+                SetupResolutions();
 
                 // Rebuild the episode list for the saved engine before restoring
                 // the saved episode. This is required when the initially
@@ -624,58 +670,6 @@ public partial class MainWindow : Window
         UpdateMapToolTip();
     }
 
-    private void UpdateMapToolTip()
-    {
-        MapInfo? selectedMap =
-            MapComboBox.SelectedItem as MapInfo;
-
-        if (selectedMap == null)
-        {
-            MapComboBox.ToolTip = null;
-            return;
-        }
-
-        string displayText =
-            $"{selectedMap.FileName} | {selectedMap.Title}";
-
-        if (MapComboBox.ActualWidth <= 0)
-        {
-            MapComboBox.ToolTip = null;
-            return;
-        }
-
-        FormattedText formattedText =
-            new FormattedText(
-                displayText,
-                System.Globalization.CultureInfo.CurrentCulture,
-                System.Windows.FlowDirection.LeftToRight,
-                new Typeface(
-                    MapComboBox.FontFamily,
-                    MapComboBox.FontStyle,
-                    MapComboBox.FontWeight,
-                    MapComboBox.FontStretch),
-                MapComboBox.FontSize,
-                System.Windows.Media.Brushes.Black,
-                VisualTreeHelper.GetDpi(
-                    MapComboBox).PixelsPerDip);
-
-        // Leave room for the ComboBox border, padding and drop-down arrow.
-        double availableWidth =
-            MapComboBox.ActualWidth -
-            MapComboBox.Padding.Left -
-            MapComboBox.Padding.Right -
-            35;
-
-        if (formattedText.Width > availableWidth)
-        {
-            MapComboBox.ToolTip = displayText;
-        }
-        else
-        {
-            MapComboBox.ToolTip = null;
-        }
-    }
-
     private void MissionComboBox_SizeChanged(
         object sender,
         SizeChangedEventArgs e)
@@ -728,6 +722,58 @@ public partial class MainWindow : Window
         else
         {
             MissionComboBox.ToolTip = null;
+        }
+    }
+
+    private void UpdateMapToolTip()
+    {
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
+        if (selectedMap == null)
+        {
+            MapComboBox.ToolTip = null;
+            return;
+        }
+
+        string displayText =
+            $"{selectedMap.FileName} | {selectedMap.Title}";
+
+        if (MapComboBox.ActualWidth <= 0)
+        {
+            MapComboBox.ToolTip = null;
+            return;
+        }
+
+        FormattedText formattedText =
+            new FormattedText(
+                displayText,
+                System.Globalization.CultureInfo.CurrentCulture,
+                System.Windows.FlowDirection.LeftToRight,
+                new Typeface(
+                    MapComboBox.FontFamily,
+                    MapComboBox.FontStyle,
+                    MapComboBox.FontWeight,
+                    MapComboBox.FontStretch),
+                MapComboBox.FontSize,
+                System.Windows.Media.Brushes.Black,
+                VisualTreeHelper.GetDpi(
+                    MapComboBox).PixelsPerDip);
+
+        // Leave room for the ComboBox border, padding and drop-down arrow.
+        double availableWidth =
+            MapComboBox.ActualWidth -
+            MapComboBox.Padding.Left -
+            MapComboBox.Padding.Right -
+            35;
+
+        if (formattedText.Width > availableWidth)
+        {
+            MapComboBox.ToolTip = displayText;
+        }
+        else
+        {
+            MapComboBox.ToolTip = null;
         }
     }
 
@@ -790,6 +836,160 @@ public partial class MainWindow : Window
         {
             DemoComboBox.ToolTip = null;
         }
+    }
+
+    private void SetupResolutions()
+    {
+        ResolutionComboBox.Items.Clear();
+
+        ResolutionComboBox.Items.Add(
+            Resolution.Default);
+
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
+
+        if (engine?.Game == QuakeGame.Quake2)
+        {
+            foreach ((int mode, int width, int height) in
+                     GetQuake2VideoModes())
+            {
+                ResolutionComboBox.Items.Add(
+                    new Resolution(width, height, false));
+            }
+        }
+        else
+        {
+            foreach (Resolution resolution in
+                     Resolution.GetAvailableResolutions())
+            {
+                ResolutionComboBox.Items.Add(resolution);
+            }
+        }
+
+        ResolutionComboBox.SelectedIndex = 0;
+        ClearResolutionButton.IsEnabled = false;
+    }
+
+    private static IEnumerable<(int Mode, int Width, int Height)>
+        GetQuake2VideoModes()
+    {
+        // Quake 2 resolution list. The r_mode number is kept with each
+        // resolution so the launch arguments use the same value.
+        return new[]
+        {
+            (1, 1920, 1200),
+            (2, 1920, 1080),
+            (3, 1680, 1050),
+            (4, 1600, 1024),
+            (4, 1600, 900),
+            (5, 1440, 900),
+            (6, 1366, 768),
+            (7, 1360, 768),
+            (8, 1280, 1024),
+            (9, 1280, 960),
+            (10, 1280, 800),
+            (11, 1280, 768),
+            (12, 1280, 720),
+            (13, 1152, 864),
+            (14, 1024, 768),
+            (15, 1024, 600),
+            (16, 960, 720),
+            (17, 856, 480),
+            (18, 800, 600),
+            (19, 800, 480),
+            (20, 640, 480)
+        };
+    }
+
+    private void ResolutionComboBox_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        bool hasResolution =
+            ResolutionComboBox.SelectedItem is Resolution resolution &&
+            !resolution.IsDefault;
+
+        ClearResolutionButton.IsEnabled =
+            hasResolution;
+
+        if (!restoringSavedSelections)
+        {
+            SaveCurrentSettings();
+        }
+
+        UpdateCommandArguments();
+    }
+
+    private void ClearResolutionButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        ResolutionComboBox.SelectedIndex = 0;
+        ClearResolutionButton.IsEnabled = false;
+
+        StatusText.Text =
+            "Cleared resolution selection.";
+
+        SaveCurrentSettings();
+        UpdateCommandArguments();
+    }
+
+    private List<string> BuildResolutionArguments()
+    {
+        Resolution? resolution =
+            ResolutionComboBox.SelectedItem as Resolution;
+
+        if (resolution == null ||
+            resolution.IsDefault)
+        {
+            return new List<string>();
+        }
+
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
+
+        if (engine?.Game == QuakeGame.Quake2)
+        {
+            int mode = GetQuake2VideoMode(resolution);
+
+            if (mode < 0)
+            {
+                return new List<string>();
+            }
+
+            return new List<string>
+            {
+                "+vid_fullscreen",
+                "1",
+                "+set",
+                "r_mode",
+                mode.ToString()
+            };
+        }
+
+        return new List<string>
+        {
+            "-width",
+            resolution.Width.ToString(),
+            "-height",
+            resolution.Height.ToString()
+        };
+    }
+
+    private static int GetQuake2VideoMode(
+        Resolution resolution)
+    {
+        foreach ((int mode, int width, int height) in
+                 GetQuake2VideoModes())
+        {
+            if (width == resolution.Width &&
+                height == resolution.Height)
+            {
+                return mode;
+            }
+        }
+
+        return -1;
     }
 
     private string GetEngineGameFolder(
@@ -924,14 +1124,19 @@ public partial class MainWindow : Window
                     "xatrix",
                     "rogue"
                 }
-                : new[]
-                {
-                    "id1",
-                    "hipnotic",
-                    "rogue",
-                    "ctf",
-                    "rerelease"
-                };
+                : game == QuakeGame.Quake3
+                    ? new[]
+                    {
+                        "baseq3"
+                    }
+                    : new[]
+                    {
+                        "id1",
+                        "hipnotic",
+                        "rogue",
+                        "ctf",
+                        "rerelease"
+                    };
 
         return directories.Any(
             directory =>
@@ -943,7 +1148,7 @@ public partial class MainWindow : Window
         string quakeFolder)
     {
         // If there is no supported engine at all, let DetectQuakeInstallation()
-        // display the dedicated "No supported Quake engine" warning instead.
+        // display the dedicated "No Quake engine detected" warning instead.
         // The root folder warning is relevant when an engine was found.
         if (!HasSupportedEngine(quakeFolder))
         {
@@ -992,6 +1197,9 @@ public partial class MainWindow : Window
         engines.AddRange(
             engineDetector2.DetectEngines(quakeFolder));
 
+        engines.AddRange(
+            engineDetector3.DetectEngines(quakeFolder));
+
         return engines.Count > 0;
     }
 
@@ -1008,7 +1216,10 @@ public partial class MainWindow : Window
                    QuakeGame.Quake1) ||
                ContainsGameDirectory(
                    folder,
-                   QuakeGame.Quake2);
+                   QuakeGame.Quake2) ||
+               ContainsGameDirectory(
+                   folder,
+                   QuakeGame.Quake3);
     }
 
     private void DetectQuakeInstallation(
@@ -1037,6 +1248,9 @@ public partial class MainWindow : Window
         engines.AddRange(
             engineDetector2.DetectEngines(quakeFolder));
 
+        engines.AddRange(
+            engineDetector3.DetectEngines(quakeFolder));
+
         foreach (Engine engine in engines)
         {
             EngineComboBox.Items.Add(engine);
@@ -1044,6 +1258,11 @@ public partial class MainWindow : Window
 
         if (EngineComboBox.Items.Count == 0)
         {
+            // No engine: resolution must remain an empty selector.
+            ResolutionComboBox.Items.Clear();
+            ResolutionComboBox.SelectedIndex = -1;
+            ClearResolutionButton.IsEnabled = false;
+
             // No supported engine means the current folder cannot
             // provide valid episode/map/demo selections either.
             MissionComboBox.Items.Clear();
@@ -1067,6 +1286,7 @@ public partial class MainWindow : Window
             ClearDifficultyButton.IsEnabled = false;
             ClearDemoButton.IsEnabled = false;
             ClearExtraArgumentsButton.IsEnabled = false;
+            RefreshEpisodesButton.IsEnabled = false;
             UpdateDemoControlsState();
 
             // No engine: Demo remains an available empty selector.
@@ -1095,11 +1315,17 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Select the first engine before building the resolution list so
+        // the initial resolution set matches the selected engine.
+        EngineComboBox.SelectedIndex = 0;
+
+        // Rebuild resolution and difficulty selectors.
+        SetupResolutions();
         SetupDifficultyOptions();
+        RefreshEpisodesButton.IsEnabled = true;
 
         // Do not force a Demo foreground here. The Demo controls use the
         // same normal WPF enabled/disabled styling as Map and Difficulty.
-        EngineComboBox.SelectedIndex = 0;
     }
 
     private void DetectMissionPacks(string quakeFolder)
@@ -1133,6 +1359,12 @@ public partial class MainWindow : Window
                     engine,
                     detectionFolder,
                     missionPackDetector2);
+        }
+        else if (engine?.Game == QuakeGame.Quake3)
+        {
+            missionPacks =
+                missionPackDetector3
+                    .DetectMissionPacks(detectionFolder);
         }
         else
         {
@@ -1480,7 +1712,9 @@ public partial class MainWindow : Window
                     gameFolder,
                     engine,
                     missionPack)
-                : quakeHandler.DetectQuake1Demos(gameFolder);
+                : engine.Game == QuakeGame.Quake3
+                    ? demoDetector3.DetectDemos(gameFolder)
+                    : quakeHandler.DetectQuake1Demos(gameFolder);
 
         // A Quake 2 demo may be returned by another detector with its name
         // already formatted as "filename | title". Do not format that
@@ -1780,6 +2014,10 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Resolution modes are engine-specific. Rebuild the selector whenever
+        // the selected engine changes so Quake 2 does not show Quake modes.
+        SetupResolutions();
+
         if (!restoringSavedSelections)
         {
             DetectMissionPacks(
@@ -1869,7 +2107,9 @@ public partial class MainWindow : Window
                 Foreground = HexBrush("#990000")
             });
 
-        DifficultyComboBox.SelectedIndex = -1;
+        // Normal is the default difficulty whenever a supported engine is available.
+        // Index 0 is None, followed by Easy, Normal, Hard and Nightmare.
+        DifficultyComboBox.SelectedIndex = 2;
         ClearDifficultyButton.IsEnabled = false;
     }
 
@@ -2458,6 +2698,10 @@ public partial class MainWindow : Window
         {
             arguments = BuildQuake2AutomaticLaunchArguments();
         }
+        else if (engine.Game == QuakeGame.Quake3)
+        {
+            arguments = BuildQuake3AutomaticLaunchArguments();
+        }
         else
         {
             arguments = BuildQuake1AutomaticLaunchArguments();
@@ -2485,6 +2729,9 @@ public partial class MainWindow : Window
             EngineComboBox.SelectedItem as Engine;
 
         List<string> arguments = new();
+
+        arguments.AddRange(
+            BuildResolutionArguments());
 
         if (missionPack != null &&
             !string.IsNullOrWhiteSpace(
@@ -2577,9 +2824,11 @@ public partial class MainWindow : Window
 
         List<string> arguments = new();
 
+        arguments.AddRange(
+            BuildResolutionArguments());
+
         // The engine runs with its own folder as the working directory.
         // Quake 2 uses +set game for mission packs/mods.
-        // baseq2 is the default game directory.
         if (missionPack != null &&
             !string.IsNullOrWhiteSpace(
                 missionPack.GameDirectory) &&
@@ -2631,6 +2880,63 @@ public partial class MainWindow : Window
         return arguments;
     }
 
+    private List<string> BuildQuake3AutomaticLaunchArguments()
+    {
+        MissionPack? missionPack =
+            MissionComboBox.SelectedItem as MissionPack;
+
+        Demo? selectedDemo =
+            GetSelectedDemo();
+
+        List<string> arguments = new();
+
+        arguments.AddRange(
+            BuildResolutionArguments());
+
+        // ioquake3 uses +set fs_game for Team Arena and other
+        // game/mod directories. baseq3 is the default folder.
+        if (missionPack != null &&
+            !string.IsNullOrWhiteSpace(
+                missionPack.GameDirectory) &&
+            !string.Equals(
+                missionPack.GameDirectory,
+                "baseq3",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            arguments.Add("+set");
+            arguments.Add("fs_game");
+            arguments.Add(
+                missionPack.GameDirectory.Trim());
+        }
+
+        if (selectedDemo != null)
+        {
+            arguments.Add("+demo");
+            arguments.Add(selectedDemo.FileName);
+            return arguments;
+        }
+
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
+        string? mapName = null;
+
+        if (selectedMap != null)
+        {
+            mapName =
+                Path.GetFileNameWithoutExtension(
+                    selectedMap.FileName);
+        }
+
+        if (!string.IsNullOrWhiteSpace(mapName))
+        {
+            arguments.Add("+map");
+            arguments.Add(mapName);
+        }
+
+        return arguments;
+    }
+
     private void UpdateCommandArguments()
     {
         updatingCommandArguments = true;
@@ -2648,7 +2954,9 @@ public partial class MainWindow : Window
                 ? new List<string>()
                 : engine.Game == QuakeGame.Quake2
                     ? BuildQuake2AutomaticLaunchArguments()
-                    : BuildQuake1AutomaticLaunchArguments();
+                    : engine.Game == QuakeGame.Quake3
+                        ? BuildQuake3AutomaticLaunchArguments()
+                        : BuildQuake1AutomaticLaunchArguments();
 
         List<string> extraArguments =
             ParseExtraArguments(
@@ -2686,7 +2994,7 @@ public partial class MainWindow : Window
                 });
         }
 
-        // ONLY manually entered extra arguments are blue.
+        // Only manual extra arguments are blue.
         bool hasExistingArguments =
             automaticArguments.Count > 0;
 
@@ -2808,8 +3116,8 @@ public partial class MainWindow : Window
             new System.Windows.Controls.TextBlock
             {
                 Text =
-                    "TQLauncher did not detect a main Quake folder so episode\n" +
-                    "and map detection could be problematic. Continue?",
+                    "TQLauncher did not detect a main Quake folder so episode and\n" +
+                    "map detection could be problematic. Continue anyway?",
                 TextWrapping = TextWrapping.Wrap
             };
 

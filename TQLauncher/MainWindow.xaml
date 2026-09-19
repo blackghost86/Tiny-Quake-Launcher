@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Tiny Quake Launcher"
         Width="400"
-        Height="590"
+        Height="635"
         WindowStartupLocation="CenterScreen"
         Background="#F2F2F2">
 
@@ -18,12 +18,13 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Quake folder -->
-        <Grid Grid.Row="0" Margin="0,0,0,15">
+        <Grid Grid.Row="0" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -52,8 +53,41 @@
                 Click="BrowseButton_Click"/>
         </Grid>
 
+        <!-- Resolution -->
+        <Grid Grid.Row="1" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                Grid.Column="0"
+                Text="Resolution:"
+                VerticalAlignment="Center"/>
+
+            <ComboBox
+                x:Name="ResolutionComboBox"
+                Grid.Column="1"
+                Height="26"
+                Margin="0,0,6,0"
+                Background="#F2F2F2"
+                SelectionChanged="ResolutionComboBox_SelectionChanged"/>
+
+            <Button
+                x:Name="ClearResolutionButton"
+                Grid.Column="2"
+                Width="38"
+                Height="26"
+                Content="✖"
+                FontSize="15"
+                BorderBrush="#999999"
+                ToolTip="Reset to default resolution"
+                Click="ClearResolutionButton_Click"/>
+        </Grid>
+
         <!-- Engine -->
-        <Grid Grid.Row="1" Margin="0,0,0,8">
+        <Grid Grid.Row="2" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -80,29 +114,16 @@
                 Padding="0"
                 BorderBrush="#999999"
                 ToolTip="Refresh engines">
-                <TextBlock
-                    Text="↻"
-                    Width="28"
-                    Height="26"
-                    FontSize="25"
-                    FontWeight="Bold"
-                    RenderTransformOrigin="0.5,0.5"
-                    TextAlignment="Center"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Padding="0"
-                    LineHeight="27"
-                    LineStackingStrategy="BlockLineHeight"
-                    Margin="0,-2,0,0">
-                    <TextBlock.RenderTransform>
-                        <RotateTransform Angle="0"/>
-                    </TextBlock.RenderTransform>
-                </TextBlock>
+                <Image
+                    Source="Buttons/refresh_32x32.png"
+                    Width="21.5"
+                    Height="21.5"
+                    Stretch="Uniform"/>
             </Button>
         </Grid>
 
         <!-- Episode -->
-        <Grid Grid.Row="2" Margin="0,0,0,8">
+        <Grid Grid.Row="3" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -129,29 +150,16 @@
                 Padding="0"
                 BorderBrush="#999999"
                 ToolTip="Refresh episodes">
-                <TextBlock
-                    Text="↻"
-                    Width="28"
-                    Height="26"
-                    FontSize="25"
-                    FontWeight="Bold"
-                    RenderTransformOrigin="0.5,0.5"
-                    TextAlignment="Center"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Padding="0"
-                    LineHeight="27"
-                    LineStackingStrategy="BlockLineHeight"
-                    Margin="0,-2,0,0">
-                    <TextBlock.RenderTransform>
-                        <RotateTransform Angle="0"/>
-                    </TextBlock.RenderTransform>
-                </TextBlock>
+                <Image
+                    Source="/Tiny Quake Launcher;component/Buttons/refresh_32x32.png"
+                    Width="21.5"
+                    Height="21.5"
+                    Stretch="Uniform"/>
             </Button>
         </Grid>
 
         <!-- Map -->
-        <Grid Grid.Row="3" Margin="0,0,0,8">
+        <Grid Grid.Row="4" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -204,7 +212,7 @@
         </Grid>
 
         <!-- Difficulty -->
-        <Grid Grid.Row="4" Margin="0,0,0,8">
+        <Grid Grid.Row="5" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -255,7 +263,7 @@
         </Grid>
 
         <!-- Demo -->
-        <Grid Grid.Row="5" Margin="0,0,0,15">
+        <Grid Grid.Row="6" Margin="0,0,0,15">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -327,7 +335,7 @@
         </Grid>
 
         <!-- Command arguments -->
-        <Grid Grid.Row="6" Margin="0,0,0,10">
+        <Grid Grid.Row="7" Margin="0,0,0,10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -339,7 +347,7 @@
             <RichTextBox
                 x:Name="CommandArgumentsTextBox"
                 Grid.Row="1"
-                Height="55"
+                Height="60"
                 IsReadOnly="True"
                 VerticalScrollBarVisibility="Auto"
                 Padding="8"
@@ -348,8 +356,7 @@
         </Grid>
 
         <!-- Extra arguments -->
-
-        <Grid Grid.Row="7" Margin="0,0,0,15">
+        <Grid Grid.Row="8" Margin="0,0,0,15">
 
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -369,11 +376,10 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Manual extra arguments -->
-
                 <TextBox
                     x:Name="ExtraArgumentsTextBox"
                     Grid.Column="0"
-                    Height="55"
+                    Height="60"
                     TextWrapping="Wrap"
                     VerticalScrollBarVisibility="Auto"
                     VerticalContentAlignment="Top"
@@ -385,18 +391,16 @@
                     TextChanged="ExtraArgumentsTextBox_TextChanged"/>
 
                 <!-- Action buttons -->
-
                 <StackPanel
                     Grid.Column="1"
                     Orientation="Vertical">
 
                     <!-- Clear extra arguments -->
-
                     <Button
                     x:Name="ClearExtraArgumentsButton"
                     Width="38"
                     Height="26"
-                    Margin="0,0,0,3"
+                    Margin="0,0,0,8"
                     Content="✖"
                     FontSize="15"
                     BorderBrush="#999999"
@@ -423,7 +427,6 @@
                     </Button>
 
                     <!-- Desktop shortcut -->
-
                     <Button
                         x:Name="CreateDesktopShortcutButton"
                         Width="38"
@@ -442,7 +445,7 @@
 
         <!-- Launch -->
         <Grid
-            Grid.Row="8"
+            Grid.Row="9"
             Margin="0,10,0,10">
 
             <Grid.RowDefinitions>
@@ -473,7 +476,7 @@
         </Grid>
 
         <!-- Bottom status bar -->
-        <Grid Grid.Row="9">
+        <Grid Grid.Row="10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -485,7 +488,7 @@
                 VerticalAlignment="Center"/>
             <TextBlock
                 Grid.Column="1"
-                Text="v0.9.8"
+                Text="v0.9.9"
                 Foreground="#B0B0B0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"/>

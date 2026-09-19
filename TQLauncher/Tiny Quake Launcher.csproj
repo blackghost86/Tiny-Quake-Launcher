@@ -21,9 +21,9 @@
 		<Copyright>Copyright © 2026 TQLauncher</Copyright>
 
 		<!-- Version -->
-		<AssemblyVersion>0.9.8.0</AssemblyVersion>
-		<FileVersion>0.9.8.0</FileVersion>
-		<InformationalVersion>0.9.8</InformationalVersion>
+		<AssemblyVersion>0.9.9.0</AssemblyVersion>
+		<FileVersion>0.9.9.0</FileVersion>
+		<InformationalVersion>0.9.9</InformationalVersion>
 
 		<!-- Framework-dependent single-file publish -->
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -34,5 +34,9 @@
 		<DebugType>None</DebugType>
 		<DebugSymbols>false</DebugSymbols>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<Resource Include="Buttons\refresh_32x32.png" />
+	</ItemGroup>
 
 </Project>
