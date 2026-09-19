@@ -32,23 +32,22 @@ public class Quake2Handler
             return missionPacks;
         }
 
+        //Vanilla Quake 2 and its official mission packs.
         string[] knownDirectories =
         {
             "baseq2",
             "xatrix",
-            "rogue",
-            "ctf"
+            "rogue"
         };
 
         string[] knownNames =
         {
             "Quake II",
             "The Reckoning",
-            "Ground Zero",
-            "Capture the Flag"
+            "Ground Zero"
         };
 
-        // Only these four known Quake 2 folders are displayed.
+        // Only these official Quake 2 folders are displayed.
         for (int i = 0; i < knownDirectories.Length; i++)
         {
             string directory =
@@ -106,7 +105,6 @@ public class Quake2Handler
                 ? new[]
                 {
                     "baseq2",
-                    "ctf",
                     "xatrix",
                     "rogue"
                 }
@@ -237,10 +235,22 @@ public class Quake2Handler
         string detectionFolder,
         MissionPackDetector2 missionPackDetector2)
     {
-        if (IsQuake2Executable(engine.ExecutablePath))
+        // Q2Pro-NG stores the original Quake 2 episodes together in the
+        // baseq2 directory. Expose those episodes separately in the
+        // launcher while keeping baseq2 as their shared game directory.
+        if (string.Equals(
+            engine.Name,
+            "Q2Pro-NG",
+            StringComparison.OrdinalIgnoreCase))
         {
-            return DetectClassicQuake2Folders(detectionFolder);
+            return DetectQ2ProNgEpisodes(
+                detectionFolder);
         }
+        if (string.Equals(engine.Name, "Quake II (Steam)", StringComparison.OrdinalIgnoreCase))
+        {
+            return DetectSteamQuake2Episodes(detectionFolder);
+        }
+
 
         if (string.Equals(
             engine.Name,
@@ -255,6 +265,86 @@ public class Quake2Handler
             .DetectMissionPacks(detectionFolder);
     }
 
+    private static List<MissionPack> DetectSteamQuake2Episodes(string detectionFolder)
+    {
+        List<MissionPack> missionPacks = new();
+        string baseq2Folder = Path.Combine(detectionFolder, "baseq2");
+        if (!Directory.Exists(baseq2Folder)) return missionPacks;
+        string[] names = { "Quake II", "The Reckoning", "Ground Zero", "Quake II 64", "Capture the Flag", "Call of the Machine" };
+        foreach (string name in names)
+        {
+            missionPacks.Add(new MissionPack { Name = name, PossibleDirectories = new List<string> { "baseq2" }, DetectedDirectory = "baseq2" });
+        }
+
+        string? callOfTheVoidDirectory =
+            new[] { "q1q2", "void" }
+                .FirstOrDefault(directory =>
+                    Directory.Exists(
+                        Path.Combine(detectionFolder, directory)));
+
+        // Detect Call of the Void expansion for Quake 2.
+        if (callOfTheVoidDirectory != null)
+        {
+            missionPacks.Add(
+                new MissionPack
+                {
+                    Name = "Call of the Void",
+                    PossibleDirectories = new List<string>
+                    {
+                        callOfTheVoidDirectory
+                    },
+                    DetectedDirectory = callOfTheVoidDirectory
+                });
+        }
+
+        return missionPacks;
+    }
+
+    private static List<MissionPack> DetectQ2ProNgEpisodes(
+        string detectionFolder)
+    {
+        List<MissionPack> missionPacks =
+            new();
+
+        string baseq2Folder =
+            Path.Combine(
+                detectionFolder,
+                "baseq2");
+
+        if (!Directory.Exists(baseq2Folder))
+        {
+            return missionPacks;
+        }
+
+        string[] names =
+        {
+            "Quake II",
+            "The Reckoning",
+            "Ground Zero",
+            "Quake II 64",
+            "Capture the Flag",
+            "Call of the Machine"
+        };
+
+        foreach (string name in names)
+        {
+            missionPacks.Add(
+                new MissionPack
+                {
+                    Name = name,
+                    PossibleDirectories =
+                        new List<string>
+                        {
+                            "baseq2"
+                        },
+                    DetectedDirectory =
+                        "baseq2"
+                });
+        }
+
+        return missionPacks;
+    }
+
     public string? GetDefaultMap(
         MissionPack missionPack,
         Engine? engine)
@@ -264,17 +354,37 @@ public class Quake2Handler
             return null;
         }
 
-        // Q2Pro-NG starts on Outer Base.
         if (string.Equals(
                 engine.Name,
                 "Q2Pro-NG",
-                StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(
-                missionPack.Name,
-                "Quake II",
                 StringComparison.OrdinalIgnoreCase))
         {
-            return "base1.bsp";
+            return missionPack.Name switch
+            {
+                "Quake II" => "base1.bsp",
+                "The Reckoning" => "badlands.bsp",
+                "Ground Zero" => "rammo1.bsp",
+                "Quake II 64" => "outpost.bsp",
+                "Capture the Flag" => "q2ctf1.bsp",
+                "Call of the Machine" => "mguhub.bsp",
+                "Call of the Void" => "voidhub.bsp",
+                _ => null
+            };
+        }
+
+        if (string.Equals(engine.Name, "Quake II (Steam)", StringComparison.OrdinalIgnoreCase))
+        {
+            return missionPack.Name switch
+            {
+                "Quake II" => "base1.bsp",
+                "The Reckoning" => "badlands.bsp",
+                "Ground Zero" => "rammo1.bsp",
+                "Quake II 64" => "outpost.bsp",
+                "Capture the Flag" => "q2ctf1.bsp",
+                "Call of the Machine" => "mguhub.bsp",
+                "Call of the Void" => "voidhub.bsp",
+                _ => null
+            };
         }
 
         if (!string.Equals(
@@ -291,8 +401,10 @@ public class Quake2Handler
             "The Reckoning" => "badlands.bsp",
             "Ground Zero" => "rammo1.bsp",
             "Quake II 64" => "outpost.bsp",
+            "Capture the Flag" => "q2ctf1.bsp",
             "Call of the Machine" => "mguhub.bsp",
             "Call of the Void" => "voidhub.bsp",
+
             _ => null
         };
     }
@@ -485,6 +597,60 @@ public class Quake2Handler
                 engine.Name,
                 "Quake II GOG",
                 StringComparison.OrdinalIgnoreCase);
+
+        bool isSteam =
+            string.Equals(engine.Name, "Quake II (Steam)", StringComparison.OrdinalIgnoreCase);
+
+        // Q2Pro-NG uses the shared baseq2 directory for all episodes.
+        if (string.Equals(
+            engine.Name,
+            "Q2Pro-NG",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            return missionPack.Name switch
+            {
+                "Quake II" =>
+                    new HashSet<string>(
+                        new[] { "demo1.dm2", "demo2.dm2" },
+                        StringComparer.OrdinalIgnoreCase),
+
+                "The Reckoning" =>
+                    new HashSet<string>(
+                        new[] { "xdemo1.dm2", "xdemo2.dm2", "xdemo3.dm2" },
+                        StringComparer.OrdinalIgnoreCase),
+
+                "Ground Zero" =>
+                    new HashSet<string>(
+                        new[] { "rdemo1.dm2", "rdemo2.dm2" },
+                        StringComparer.OrdinalIgnoreCase),
+
+                "Quake II 64" =>
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+
+                "Capture the Flag" =>
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+
+                "Call of the Machine" =>
+                    new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+
+                _ => null
+            };
+        }
+
+        // Quake 2 Steam demos.
+        if (isSteam)
+        {
+            return missionPack.Name switch
+            {
+                "Quake II" => new HashSet<string>(new[] { "demo1.dm2", "demo2.dm2" }, StringComparer.OrdinalIgnoreCase),
+                "The Reckoning" => new HashSet<string>(new[] { "rdemo1.dm2", "rdemo2.dm2" }, StringComparer.OrdinalIgnoreCase),
+                "Ground Zero" => new HashSet<string>(new[] { "xdemo1.dm2", "xdemo2.dm2", "xdemo3.dm2" }, StringComparer.OrdinalIgnoreCase),
+                "Quake II 64" => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                "Capture the Flag" => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                "Call of the Machine" => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                _ => null
+            };
+        }
 
         // Quake 2 GOG demos.
         if (isGog)
@@ -1054,7 +1220,7 @@ public class Quake2Handler
                  position++)
             {
                 // svc_configstring
-                if (message[position] != 13) 
+                if (message[position] != 13)
                 {
                     continue;
                 }
@@ -1109,9 +1275,9 @@ public class Quake2Handler
         try
         {
             if (message.Length < 2 ||
-            
+
                 // svc_serverdata
-                message[0] != 12) 
+                message[0] != 12)
             {
                 return null;
             }
@@ -1124,7 +1290,7 @@ public class Quake2Handler
             }
 
             // protocol
-            position += 4; 
+            position += 4;
 
             if (position + 4 > message.Length)
             {
@@ -1132,7 +1298,7 @@ public class Quake2Handler
             }
 
             // server count
-            position += 4; 
+            position += 4;
 
             if (position >= message.Length)
             {
@@ -1140,7 +1306,7 @@ public class Quake2Handler
             }
 
             // attract loop
-            position++; 
+            position++;
 
             // game directory
             ReadNullTerminatedAscii(
@@ -1153,7 +1319,7 @@ public class Quake2Handler
             }
 
             // player number
-            position += 2; 
+            position += 2;
 
             return ReadNullTerminatedAscii(
                 message,
