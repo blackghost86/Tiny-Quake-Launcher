@@ -35,6 +35,10 @@ public class EngineDetector
             engines,
             folder);
 
+        AddIronwailEngine(
+            engines,
+            folder);
+
         return engines
             .OrderBy(engine => engine.Name)
             .ToList();
@@ -68,10 +72,6 @@ public class EngineDetector
                 "vkQuake",
                 executablePath),
 
-            "ironwail.exe" => CreateEngine(
-                "Ironwail",
-                executablePath),
-
             "fteqw.exe" => CreateEngine(
                 "FTEQW",
                 executablePath),
@@ -100,6 +100,7 @@ public class EngineDetector
                 "Quake GOG",
                 executablePath),
 
+            // Alternative executable for Quake GOG.
             "quake_gog.exe" => CreateEngine(
                 "Quake GOG",
                 executablePath),
@@ -121,11 +122,11 @@ public class EngineDetector
                 executablePath),
 
             "qwcl.exe" => CreateEngine(
-                "QuakeWorld Client",
+                "QW Client",
                 executablePath),
 
             "glqwcl.exe" => CreateEngine(
-                "QuakeWorld Client (OpenGL)",
+                "QW Client (OpenGL)",
                 executablePath),
 
             "winquake.exe" => CreateEngine(
@@ -191,6 +192,53 @@ public class EngineDetector
             new Engine
             {
                 Name = "Quakespasm-Spiked",
+                ExecutablePath = executablePath,
+                Game = QuakeGame.Quake1
+            });
+    }
+
+    private static void AddIronwailEngine(
+        List<Engine> engines,
+        string quakeFolder)
+    {
+        // Ironwail is usually located in a folder.
+        string? executablePath =
+            Directory.GetFiles(
+                    quakeFolder,
+                    "ironwail.exe",
+                    SearchOption.AllDirectories)
+                .FirstOrDefault(
+                    path =>
+                    {
+                        string? directory =
+                            Path.GetDirectoryName(path);
+
+                        return !string.IsNullOrWhiteSpace(directory) &&
+                            string.Equals(
+                                Path.GetFileName(directory),
+                                "ironwail",
+                                StringComparison.OrdinalIgnoreCase);
+                    });
+
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return;
+        }
+
+        if (engines.Any(
+                engine =>
+                    string.Equals(
+                        engine.ExecutablePath,
+                        executablePath,
+                        StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        engines.Add(
+            new Engine
+            {
+                Name = "Ironwail",
                 ExecutablePath = executablePath,
                 Game = QuakeGame.Quake1
             });
