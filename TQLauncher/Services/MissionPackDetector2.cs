@@ -59,8 +59,7 @@ public class MissionPackDetector2
             return detected;
         }
 
-        // Quake 2 GOG combines the original game, The Reckoning,
-        // Ground Zero, Q64 and Call of the Machine in baseq2.
+        // Quake 2 GOG combines all episodes in baseq2 folder.
         detected.Add(
             new MissionPack
             {
@@ -98,6 +97,18 @@ public class MissionPackDetector2
             new MissionPack
             {
                 Name = "Quake II 64",
+                PossibleDirectories = new List<string>
+                {
+                    "baseq2"
+                },
+                DetectedDirectory = "baseq2"
+            });
+
+        // Quake 2 GOG also contains Capture the Flag in baseq2.
+        detected.Add(
+            new MissionPack
+            {
+                Name = "Capture the Flag",
                 PossibleDirectories = new List<string>
                 {
                     "baseq2"
@@ -315,7 +326,6 @@ public class MissionPackDetector2
 
         // Keep official Quake 2 episodes together in the
         // standard episode/mission pack order.
-
         List<MissionPack> official =
             new();
 
@@ -391,7 +401,6 @@ public class MissionPackDetector2
         foreach (MissionPack missionPack in allMissionPacks)
         {
             // Quake 2 itself is the base game, not a mission pack.
-
             if (string.Equals(
                 missionPack.Name,
                 "Quake II",
@@ -438,7 +447,6 @@ public class MissionPackDetector2
         string folder)
     {
         // Check for PAK files directly in the folder.
-
         if (Directory.GetFiles(
             folder,
             "*.pak",
@@ -448,7 +456,6 @@ public class MissionPackDetector2
         }
 
         // Check for loose BSP maps.
-
         string mapsFolder =
             Path.Combine(
                 folder,
@@ -466,7 +473,6 @@ public class MissionPackDetector2
         }
 
         // Check for BSP maps inside PK3 files.
-
         string[] pk3Files =
             Directory.GetFiles(
                 folder,
