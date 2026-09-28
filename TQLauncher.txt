@@ -27,7 +27,7 @@ Quake 2:
 - Quake 2 GOG + Quake 2 (Steam) support - done (v0.9.5)
 - Call of the Void (2025) support - done (v0.9.5)
 - Vanilla Quake 2 (Win 95 version) support - done (v0.9.6)
-- Multiplayer support - work in progress
+- Multiplayer support - done (v1.0)
 
 Quake 3:
 - Base game + expansion support - done (v0.9.9)
@@ -83,7 +83,6 @@ Changelog
 - Set default maps for Quake 3 Arena and Team Arena.
 - Set default map for Quake 2 - Unseen episode.
 - Renamed a few warnings and bottom messages.
-- Renamed clear difficulty with clear mode in multiplayer.
 - Renamed ioquake3 to ioQuake 3.
 
 0.9.9:
