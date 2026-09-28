@@ -35,6 +35,7 @@ Quake 3:
 
 All games:
 - Demo support for Quake 1 + 2 - done (v0.9.2)
+- Demo support for Quake 3 - done (v1.0)
 - Custom resolution support - done (v0.9.9)
 
 Other:
