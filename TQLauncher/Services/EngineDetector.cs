@@ -16,10 +16,11 @@ public class EngineDetector
             return engines;
         }
 
-        string[] executables = Directory.GetFiles(
-            folder,
-            "*.exe",
-            System.IO.SearchOption.AllDirectories);
+        string[] executables =
+            EnumerateFilesSafe(
+                folder,
+                "*.exe")
+                .ToArray();
 
         foreach (string executable in executables)
         {
@@ -30,6 +31,10 @@ public class EngineDetector
                 engines.Add(engine);
             }
         }
+
+        AddQuakeSpasmEngine(
+            engines,
+            folder);
 
         AddQuakeSpasmSpikedEngine(
             engines,
@@ -66,6 +71,14 @@ public class EngineDetector
 
             "quakespasm-spiked-win64.exe" => CreateEngine(
                 "Quakespasm-Spiked",
+                executablePath),
+
+            "QSS-M-w32.exe" => CreateEngine(
+                "QSS-M",
+                executablePath),
+
+            "QSS-M-w64.exe" => CreateEngine(
+                "QSS-M",
                 executablePath),
 
             "vkquake.exe" => CreateEngine(
@@ -133,11 +146,12 @@ public class EngineDetector
                 "WinQuake",
                 executablePath),
 
-            // This engine is outdated.
+            // FitzQuake engine is outdated, but still in use.
             "fitzquake.exe" => CreateEngine(
                 "FitzQuake",
                 executablePath),
 
+            // Last known FitzQuake version released.
             "fitzquake85.exe" => CreateEngine(
                 "FitzQuake",
                  executablePath),
@@ -146,32 +160,117 @@ public class EngineDetector
         };
     }
 
-    private static void AddQuakeSpasmSpikedEngine(
+    private static void AddQuakeSpasmEngine(
         List<Engine> engines,
         string quakeFolder)
     {
-        //Quakespasm-Spiked could be located in a qss folder.
-        string qssFolder =
-            Path.Combine(
-                quakeFolder,
-                "qss");
+        // Quakespasm may be located inside a dedicated QS folder.
+        string? executablePath =
+            EnumerateFilesSafe(
+                    quakeFolder,
+                    "*.exe")
+                .FirstOrDefault(
+                    path =>
+                    {
+                        string? directory =
+                            Path.GetDirectoryName(path);
 
-        if (!Directory.Exists(qssFolder))
+                        if (string.IsNullOrWhiteSpace(directory))
+                        {
+                            return false;
+                        }
+
+                        string fileName =
+                            Path.GetFileName(path);
+
+                        bool isQuakespasmExecutable =
+                            string.Equals(
+                                fileName,
+                                "quakespasm.exe",
+                                StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(
+                                fileName,
+                                "quakespasm-sdl12.exe",
+                                StringComparison.OrdinalIgnoreCase);
+
+                        return isQuakespasmExecutable &&
+                            string.Equals(
+                                Path.GetFileName(directory),
+                                "quakespasm",
+                                StringComparison.OrdinalIgnoreCase);
+                    });
+
+        if (string.IsNullOrWhiteSpace(executablePath))
         {
             return;
         }
 
+        if (engines.Any(
+                engine =>
+                    string.Equals(
+                        engine.ExecutablePath,
+                        executablePath,
+                        StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        string fileName =
+            Path.GetFileName(executablePath);
+
+        engines.Add(
+            new Engine
+            {
+                Name = string.Equals(
+                    fileName,
+                    "quakespasm-sdl12.exe",
+                    StringComparison.OrdinalIgnoreCase)
+                    ? "Quakespasm SDL"
+                    : "Quakespasm",
+                ExecutablePath = executablePath,
+                Game = QuakeGame.Quake1
+            });
+    }
+
+    private static void AddQuakeSpasmSpikedEngine(
+        List<Engine> engines,
+        string quakeFolder)
+    {
+        // Quakespasm-Spiked may be located inside a QSS folder.
         string? executablePath =
-            Directory.GetFiles(
-                    qssFolder,
-                    "*.exe",
-                    SearchOption.TopDirectoryOnly)
+            EnumerateFilesSafe(
+                    quakeFolder,
+                    "*.exe")
                 .FirstOrDefault(
                     path =>
-                        Path.GetFileNameWithoutExtension(path)
-                            .StartsWith(
-                                "quakespasm-spiked",
-                                StringComparison.OrdinalIgnoreCase));
+                    {
+                        string? directory =
+                            Path.GetDirectoryName(path);
+
+                        if (string.IsNullOrWhiteSpace(directory))
+                        {
+                            return false;
+                        }
+
+                        string fileName =
+                            Path.GetFileName(path);
+
+                        bool isQuakespasmSpikedExecutable =
+                            string.Equals(
+                                fileName,
+                                "quakespasm-spiked-win32.exe",
+                                StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(
+                                fileName,
+                                "quakespasm-spiked-win64.exe",
+                                StringComparison.OrdinalIgnoreCase);
+
+                        return isQuakespasmSpikedExecutable &&
+                            string.Equals(
+                                Path.GetFileName(directory),
+                                "qss",
+                                StringComparison.OrdinalIgnoreCase);
+                    });
 
         if (string.IsNullOrWhiteSpace(executablePath))
         {
@@ -203,10 +302,9 @@ public class EngineDetector
     {
         // Ironwail is usually located in a folder.
         string? executablePath =
-            Directory.GetFiles(
+            EnumerateFilesSafe(
                     quakeFolder,
-                    "ironwail.exe",
-                    SearchOption.AllDirectories)
+                    "ironwail.exe")
                 .FirstOrDefault(
                     path =>
                     {
@@ -254,5 +352,121 @@ public class EngineDetector
             ExecutablePath = executablePath,
             Game = QuakeGame.Quake1
         };
+    }
+
+    private static IEnumerable<string> EnumerateFilesSafe(
+        string rootFolder,
+        string searchPattern)
+    {
+        if (!Directory.Exists(rootFolder))
+        {
+            yield break;
+        }
+
+        Stack<string> folders = new();
+        folders.Push(rootFolder);
+
+        while (folders.Count > 0)
+        {
+            string currentFolder = folders.Pop();
+
+            string folderName =
+                Path.GetFileName(
+                    currentFolder.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar));
+
+            // Windows system/protected folders that should never be scanned.
+            if (string.Equals(
+                    folderName,
+                    "$Recycle.Bin",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "Config.Msi",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "PerfLogs",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "System Volume Information",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string[] files;
+            try
+            {
+                files = Directory.GetFiles(
+                    currentFolder,
+                    searchPattern,
+                    SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            foreach (string file in files)
+            {
+                yield return file;
+            }
+
+            string[] subdirectories;
+            try
+            {
+                subdirectories = Directory.GetDirectories(
+                    currentFolder,
+                    "*",
+                    SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            foreach (string subdirectory in subdirectories)
+            {
+                string subdirectoryName =
+                    Path.GetFileName(
+                        subdirectory.TrimEnd(
+                            Path.DirectorySeparatorChar,
+                            Path.AltDirectorySeparatorChar));
+
+                // Exclude Windows system/protected folders.
+                if (string.Equals(
+                        subdirectoryName,
+                        "$Recycle.Bin",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "Config.Msi",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "PerfLogs",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "System Volume Information",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                folders.Push(subdirectory);
+            }
+        }
     }
 }

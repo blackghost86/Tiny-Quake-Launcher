@@ -15,10 +15,11 @@ public class EngineDetector2
             return engines;
         }
 
-        string[] executables = Directory.GetFiles(
-            folder,
-            "*.exe",
-            System.IO.SearchOption.AllDirectories);
+        string[] executables =
+            EnumerateFilesSafe(
+                folder,
+                "*.exe")
+                .ToArray();
 
         foreach (string executable in executables)
         {
@@ -102,5 +103,122 @@ public class EngineDetector2
             ExecutablePath = executablePath,
             Game = QuakeGame.Quake2
         };
+    }
+
+    private static IEnumerable<string> EnumerateFilesSafe(
+        string rootFolder,
+        string searchPattern)
+    {
+        if (!Directory.Exists(rootFolder))
+        {
+            yield break;
+        }
+
+        Stack<string> folders = new();
+        folders.Push(rootFolder);
+
+        while (folders.Count > 0)
+        {
+            string currentFolder = folders.Pop();
+
+            string folderName =
+                Path.GetFileName(
+                    currentFolder.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar));
+
+            // Windows system/protected folders that should never be scanned.
+            // Sometimes these folders can be present or hidden.
+            if (string.Equals(
+                    folderName,
+                    "$Recycle.Bin",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "Config.Msi",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "PerfLogs",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "System Volume Information",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string[] files;
+            try
+            {
+                files = Directory.GetFiles(
+                    currentFolder,
+                    searchPattern,
+                    SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            foreach (string file in files)
+            {
+                yield return file;
+            }
+
+            string[] subdirectories;
+            try
+            {
+                subdirectories = Directory.GetDirectories(
+                    currentFolder,
+                    "*",
+                    SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            foreach (string subdirectory in subdirectories)
+            {
+                string subdirectoryName =
+                    Path.GetFileName(
+                        subdirectory.TrimEnd(
+                            Path.DirectorySeparatorChar,
+                            Path.AltDirectorySeparatorChar));
+
+                // Exclude Windows system/protected folders.
+                if (string.Equals(
+                        subdirectoryName,
+                        "$Recycle.Bin",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "Config.Msi",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "PerfLogs",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "System Volume Information",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                folders.Push(subdirectory);
+            }
+        }
     }
 }
