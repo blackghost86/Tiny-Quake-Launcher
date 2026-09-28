@@ -20,21 +20,22 @@ Quake:
 - Quake: Dawn of the Machine (2026) support - done (v0.2)
 - Quake GOG + Quake (Steam) support - done (v0.9.6)
 - Vanilla Quake support - done (v0.9.6)
-- Multiplayer support - work in progress (v1.0)
+- Multiplayer support - done (v1.0)
 
 Quake 2:
 - Quake 2 support - done (v0.7)
 - Quake 2 GOG + Quake 2 (Steam) support - done (v0.9.5)
 - Call of the Void (2025) support - done (v0.9.5)
 - Vanilla Quake 2 (Win 95 version) support - done (v0.9.6)
-- Multiplayer support - not started yet
+- Multiplayer support - work in progress
 
 Quake 3:
-- Initial base game + expansion support - done (v0.9.9)
-- Proper multiplayer support - in progress
+- Base game + expansion support - done (v0.9.9)
+- Proper multiplayer support - done (v1.0)
+- Proper demo support - done (v1.0)
 
 All games:
-- Demo support for Quake 1 + 2 - done (v0.9.2)
+- Demo support for Quake 1/2/3 - done (v0.9.2)
 - Custom resolution support - done (v0.9.9)
 
 Other:
@@ -55,6 +56,36 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 --------------------------------------------------------------------------
+1.0:
+- Redesigned the launcher to have a singleplayer and multiplayer tab.
+- Duplicated some rules to be the same in multiplayer.
+- DM, CTF, Journey and Team maps are shown in multiplayer tabs.
+- Tabs are aligned properly and inactive tab has a new color.
+- Added deathmatch mode selection to multiplayer maps.
+- Added kill/flag/time limit and max players.
+- Added an exception to exclude searching in a few system folders.
+- Added +set com_hunkmegs 512 argument needed for Quake 3.
+- Added support for Quakespasm-Spiked Multiplayer.
+- Added support for Quake3e and FTEQW (Q3).
+- Fixed a crash when engines are detected with not a single episode.
+- Fixed a crash when a denied folder is accessed.
+- Fixed (again) engine detection for both QS and QSS folders.
+- Fixed custom folders detection for Q2Pro-NG.
+- Fixed buttons when no engine detected.
+- Fixed drop-downs and clear buttons when no episode detected.
+- Fixed map names and demo support for Quake 3.
+- Fixed map sorting and excluded test maps.
+- Fixed difficulty for multiplayer (should be left blank).
+- Fixed demo title for Quake - Fortress.
+- Fixed demo sorting according to their extension.
+- Fixed demo title capitalization for Quake 3.
+- Fixed color for refresh buttons when these are disabled.
+- Set default maps for Quake 3 Arena and Team Arena.
+- Set default map for Quake 2 - Unseen episode.
+- Renamed a few warnings and bottom messages.
+- Renamed clear difficulty with clear mode in multiplayer.
+- Renamed ioquake3 to ioQuake 3.
+
 0.9.9:
 - Added custom resolution support (all games) + clear resolution button.
 - Added Quake 3 support for base game + expansion.
