@@ -342,7 +342,159 @@ public class Quake2Handler
                 });
         }
 
+        // Q2Pro-NG can also load standalone/custom Quake 2 game
+        // folders alongside baseq2. Detect those folders using
+        // the same content rules as the normal detectors.
+        string[] directories =
+            Directory.GetDirectories(
+                detectionFolder,
+                "*",
+                SearchOption.TopDirectoryOnly);
+
+        HashSet<string> knownDirectories =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                "baseq2"
+            };
+
+        foreach (MissionPack missionPack in missionPacks)
+        {
+            if (!string.IsNullOrWhiteSpace(
+                    missionPack.DetectedDirectory))
+            {
+                knownDirectories.Add(
+                    missionPack.DetectedDirectory);
+            }
+        }
+
+        foreach (string directory in directories)
+        {
+            string folderName =
+                Path.GetFileName(
+                    directory.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar));
+
+            if (string.IsNullOrWhiteSpace(folderName) ||
+                knownDirectories.Contains(folderName))
+            {
+                continue;
+            }
+
+            if (!ContainsQuake2ContentForQ2ProNg(directory))
+            {
+                continue;
+            }
+
+            string displayName =
+                string.Equals(
+                    folderName,
+                    "q1q2",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "void",
+                     StringComparison.OrdinalIgnoreCase)
+                    ? "Call of the Void"
+                    : folderName;
+
+            missionPacks.Add(
+                new MissionPack
+                {
+                    Name = displayName,
+                    PossibleDirectories =
+                        new List<string>
+                        {
+                            folderName
+                        },
+                    DetectedDirectory =
+                        folderName
+                });
+        }
+
         return missionPacks;
+    }
+
+    private static bool ContainsQuake2ContentForQ2ProNg(
+        string folder)
+    {
+        if (!Directory.Exists(folder))
+        {
+            return false;
+        }
+
+        // Standard Quake II PAK content.
+        if (Directory.GetFiles(
+                folder,
+                "*.pak",
+                SearchOption.TopDirectoryOnly).Length > 0)
+        {
+            return true;
+        }
+
+        // Loose BSP maps.
+        string mapsFolder =
+            Path.Combine(
+                folder,
+                "maps");
+
+        if (Directory.Exists(mapsFolder) &&
+            Directory.GetFiles(
+                mapsFolder,
+                "*.bsp",
+                SearchOption.TopDirectoryOnly).Length > 0)
+        {
+            return true;
+        }
+
+        // PK3/ZIP mods can contain their maps inside the archive.
+        string[] archives =
+            Directory.GetFiles(
+                folder,
+                "*",
+                SearchOption.TopDirectoryOnly);
+
+        foreach (string archiveFile in archives)
+        {
+            string extension =
+                Path.GetExtension(archiveFile);
+
+            if (!string.Equals(
+                    extension,
+                    ".pk3",
+                    StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(
+                    extension,
+                    ".zip",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                using ZipArchive archive =
+                    ZipFile.OpenRead(archiveFile);
+
+                if (archive.Entries.Any(
+                        entry =>
+                            entry.FullName.StartsWith(
+                                "maps/",
+                                StringComparison.OrdinalIgnoreCase) &&
+                            entry.FullName.EndsWith(
+                                ".bsp",
+                                StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Ignore invalid or inaccessible archives.
+            }
+        }
+
+        return false;
     }
 
     public string? GetDefaultMap(
@@ -352,6 +504,16 @@ public class Quake2Handler
         if (engine?.Game != QuakeGame.Quake2)
         {
             return null;
+        }
+
+        // Unseen is a standalone Quake 2 game/mod directory, not an episode.
+        // If detected, its default map is Storage Center (base1.bsp).
+        if (string.Equals(
+                missionPack.DetectedDirectory,
+                "unseen",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "base1.bsp";
         }
 
         if (string.Equals(
