@@ -11,8 +11,14 @@ namespace TinyQuakeLauncher.Services;
 
 public class DemoDetector3
 {
-    // Quake 3 Arena demo files use the .dm3 extension.
-    private const string DemoExtension = ".dm3";
+    // Quake 3 Arena and Team Arena demo files have several extensions.
+    private static readonly string[] DemoExtensions =
+    {
+        ".dm3",
+        ".dm_48",
+        ".dm_66",
+        ".dm_68"
+    };
 
     // Quake 3 server-message opcodes.
     private const int SvcGamestate = 5;
@@ -74,7 +80,8 @@ public class DemoDetector3
                 group
                     .OrderBy(GetResourcePriority)
                     .First())
-            .OrderBy(
+            .OrderBy(GetDemoExtensionPriority)
+            .ThenBy(
                 demo => demo.Name,
                 StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -95,8 +102,10 @@ public class DemoDetector3
             files =
                 Directory.GetFiles(
                     folder,
-                    "*.dm3",
-                    SearchOption.AllDirectories);
+                    "*",
+                    SearchOption.AllDirectories)
+                .Where(IsQuake3DemoFile)
+                .ToArray();
         }
         catch
         {
@@ -112,16 +121,35 @@ public class DemoDetector3
                         file,
                         folder);
 
-                if (demo != null)
-                {
-                    demos.Add(demo);
-                }
+                // A valid Q3 DM3 file can still be detected even when
+                // the optional metadata parser cannot decode its first
+                // gamestate message. Detection must not depend on
+                // successfully extracting the map name.
+                demos.Add(
+                    demo ??
+                    CreateFallbackDemo(
+                        Path.GetFileName(file),
+                        folder,
+                        DemoResourceType.Folder,
+                        file));
             }
             catch
             {
                 // Ignore invalid or unreadable demos.
             }
         }
+    }
+
+    private static bool IsQuake3DemoFile(string fileName)
+    {
+        string extension =
+            Path.GetExtension(fileName);
+
+        return DemoExtensions.Any(
+            demoExtension =>
+                extension.Equals(
+                    demoExtension,
+                    StringComparison.OrdinalIgnoreCase));
     }
 
     private Demo? ParseFileDemo(
@@ -210,9 +238,7 @@ public class DemoDetector3
 
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
-                if (!entry.FullName.EndsWith(
-                        DemoExtension,
-                        StringComparison.OrdinalIgnoreCase))
+                if (!IsQuake3DemoFile(entry.FullName))
                 {
                     continue;
                 }
@@ -240,18 +266,22 @@ public class DemoDetector3
                     ParseDm3(
                         reader);
 
-                if (info == null)
-                {
-                    continue;
-                }
-
+                // The demo is still a valid launcher resource even if
+                // metadata extraction fails. Keep it visible so it
+                // can be selected and launched.
                 demos.Add(
-                    CreateDemo(
-                        Path.GetFileName(entry.FullName),
-                        gameDirectory,
-                        info,
-                        DemoResourceType.Pk3,
-                        archiveFile));
+                    info != null
+                        ? CreateDemo(
+                            Path.GetFileName(entry.FullName),
+                            gameDirectory,
+                            info,
+                            DemoResourceType.Pk3,
+                            archiveFile)
+                        : CreateFallbackDemo(
+                            Path.GetFileName(entry.FullName),
+                            gameDirectory,
+                            DemoResourceType.Pk3,
+                            archiveFile));
             }
         }
         catch
@@ -275,7 +305,7 @@ public class DemoDetector3
             return null;
         }
 
-        // A Quake 3 demo is a sequence of:
+        // A Quake 3 (Q3A or Q3TA) demo is a sequence of:
         //
         //   int32 serverMessageSequence
         //   int32 messageLength
@@ -341,8 +371,8 @@ public class DemoDetector3
     private static string? FindMapNameInGameState(
         byte[] message)
     {
-        // Look for svc_gamestate and then walk the configstrings
-        // contained in that gamestate. A Q3 configstring command is:
+        // Look for svc_gamestate and then walk the configstrings contained
+        // in that gamestate. A Q3 configstring command is:
         //
         //   svc_configstring
         //   int16 index
@@ -429,7 +459,7 @@ public class DemoDetector3
                 if (command == 7)
                 {
                     // Baseline data follows and is variable-length,
-                    // so it is not safe to infer a complete message
+                    // so it's not safe to infer a complete message
                     // layout here. Stop this gamestate scan.
                     break;
                 }
@@ -507,6 +537,37 @@ public class DemoDetector3
     // Demo -> model
     // =============================================================
 
+    private static Demo CreateFallbackDemo(
+        string fileName,
+        string gameDirectory,
+        DemoResourceType resourceType,
+        string resourcePath)
+    {
+        string title =
+            Path.GetFileNameWithoutExtension(fileName);
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            title = fileName;
+        }
+
+        title =
+            CapitalizeFirstLetter(title);
+
+        return new Demo
+        {
+            Name =
+                $"{fileName} | {title}",
+
+            FileName = fileName,
+            GameDirectory = gameDirectory,
+            MapFileName = string.Empty,
+            MapTitle = title,
+            ResourceType = resourceType,
+            ResourcePath = resourcePath
+        };
+    }
+
     private static Demo CreateDemo(
         string fileName,
         string gameDirectory,
@@ -518,6 +579,7 @@ public class DemoDetector3
             string.IsNullOrWhiteSpace(
                 info.MapTitle)
                 ? fileName
+                // Q3 demo titles are always capitalized.
                 : CapitalizeFirstLetter(
                     info.MapTitle);
 
@@ -573,6 +635,23 @@ public class DemoDetector3
 
         return char.ToUpperInvariant(value[0]) +
                value[1..];
+    }
+
+    private static int GetDemoExtensionPriority(
+        Demo demo)
+    {
+        string extension =
+            Path.GetExtension(
+                demo.FileName);
+
+        return extension.ToLowerInvariant() switch
+        {
+            ".dm3" => 0,
+            ".dm_48" => 1,
+            ".dm_66" => 2,
+            ".dm_68" => 3,
+            _ => 4
+        };
     }
 
     private static int GetResourcePriority(
