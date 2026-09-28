@@ -34,8 +34,8 @@ Quake 3:
 - Proper demo support - done (v1.0)
 
 All games:
-- Demo support for Quake 1/2/3 - done (v1.0)
 - Custom resolution support - done (v0.9.9)
+- Proper demo support - done (v1.0)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
