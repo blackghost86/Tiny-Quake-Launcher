@@ -1,498 +1,684 @@
 ﻿<Window x:Class="TinyQuakeLauncher.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:TinyQuakeLauncher"
         Title="Tiny Quake Launcher"
         Width="400"
-        Height="635"
+        Height="675"
         WindowStartupLocation="CenterScreen"
         Background="#F2F2F2">
 
-    <Grid Margin="20">
+    <TabControl Margin="20"
+                Background="#F2F2F2">
+        <TabControl.Resources>
+            <Style TargetType="{x:Type TabItem}">
+                <Setter Property="Background" Value="#F2F2F2"/>
+                <Setter Property="BorderBrush" Value="#999999"/>
+                <Setter Property="Foreground" Value="Black"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type TabItem}">
+                            <Grid>
+                                <Border
+                                    x:Name="TabBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1,1,1,0"
+                                    Padding="9,4"
+                                    Margin="0,-2,0,0">
+                                    <ContentPresenter
+                                        ContentSource="Header"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"/>
+                                </Border>
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+                                <!-- Explicit bottom border for inactive tabs -->
+                                <Border
+                                    x:Name="InactiveBottomBorder"
+                                    Height="1"
+                                    Background="#999999"
+                                    VerticalAlignment="Bottom"
+                                    HorizontalAlignment="Stretch"
+                                    Panel.ZIndex="10"/>
+                            </Grid>
 
-        <!-- Quake folder -->
-        <Grid Grid.Row="0" Margin="0,0,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock
-                Grid.Column="0"
-                Text="Game folder:"
-                VerticalAlignment="Center"/>
-            <TextBox
-                x:Name="QuakeFolderTextBox"
-                Grid.Column="1"
-                Height="26"
-                Margin="0,0,6,0"
-                VerticalContentAlignment="Center"
-                ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-            <Button
-                x:Name="BrowseButton"
-                Grid.Column="2"
-                Content="📂"
-                FontSize="13"
-                Width="38"
-                Height="26"
-                BorderBrush="#999999"
-                ToolTip="Browse Quake folder"
-                Click="BrowseButton_Click"/>
-        </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="TabBorder" Property="Background" Value="#F2F2F2"/>
+                                    <Setter TargetName="TabBorder" Property="Margin" Value="0,-3,0,0"/>
+                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
+                                    <Setter TargetName="InactiveBottomBorder" Property="Visibility" Value="Collapsed"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="False">
+                                    <Setter TargetName="TabBorder" Property="Margin" Value="0,0,0,0"/>
+                                    <Setter TargetName="TabBorder" Property="Background" Value="White"/>
+                                    <Setter TargetName="InactiveBottomBorder" Property="Visibility" Value="Visible"/>
+                                </Trigger>
 
-        <!-- Resolution -->
-        <Grid Grid.Row="1" Margin="0,0,0,15">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+                                <!-- Active tabs are using the same gray color as background -->
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="#999999"/>
+                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
+                                </Trigger>
 
-            <TextBlock
-                Grid.Column="0"
-                Text="Resolution:"
-                VerticalAlignment="Center"/>
+                                <!-- Inactive tabs keep their normal gray border -->
+                                <Trigger Property="IsSelected" Value="False">
+                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="#999999"/>
+                                </Trigger>
+                                <DataTrigger Binding="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" Value="Multiplayer">
+                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
+                                </DataTrigger>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" Value="Singleplayer"/>
+                                        <Condition Binding="{Binding SelectedItem.Header, RelativeSource={RelativeSource AncestorType={x:Type TabControl}}}" Value="Multiplayer"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
+                                </MultiDataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </TabControl.Resources>
+        <TabControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+        </TabControl.ItemsPanel>
+        <TabControl.Template>
+            <ControlTemplate TargetType="{x:Type TabControl}">
+                <Grid Background="{TemplateBinding Background}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-            <ComboBox
-                x:Name="ResolutionComboBox"
-                Grid.Column="1"
-                Height="26"
-                Margin="0,0,6,0"
-                Background="#F2F2F2"
-                SelectionChanged="ResolutionComboBox_SelectionChanged"/>
+                    <!-- Full-width gray line below the tab headers -->
+                    <Border
+                        Grid.Row="0"
+                        Height="1"
+                        Background="#999999"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Stretch"
+                        Margin="-20,0,-20,0"
+                        Panel.ZIndex="0"/>
 
-            <Button
-                x:Name="ClearResolutionButton"
-                Grid.Column="2"
-                Width="38"
-                Height="26"
-                Content="✖"
-                FontSize="15"
-                BorderBrush="#999999"
-                ToolTip="Reset to default resolution"
-                Click="ClearResolutionButton_Click"/>
-        </Grid>
+                    <ItemsPresenter
+                        Grid.Row="0"
+                        HorizontalAlignment="Left"
+                        KeyboardNavigation.TabNavigation="Local"
+                        Panel.ZIndex="1"/>
+                    <ContentPresenter
+                        Grid.Row="1"
+                        Margin="0,0,0,0"
+                        ContentSource="SelectedContent"/>
+                </Grid>
+            </ControlTemplate>
+        </TabControl.Template>
+        <TabItem Header="Singleplayer" Margin="0,0,-1,0">
+            <Grid Background="#F2F2F2">
 
-        <!-- Engine -->
-        <Grid Grid.Row="2" Margin="0,0,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock
-                Grid.Column="0"
-                Text="Engine:"
-                VerticalAlignment="Center"/>
-            <ComboBox
-                x:Name="EngineComboBox"
-                Background="#F2F2F2"
-                Grid.Column="1"
-                Height="26"
-                Margin="0,0,6,0"
-                SelectionChanged="EngineComboBox_SelectionChanged"/>
-            <Button
-                x:Name="RefreshEnginesButton"
-                Grid.Column="2"
-                Width="38"
-                Height="26"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                Padding="0"
-                BorderBrush="#999999"
-                ToolTip="Refresh engines">
-                <Image
-                    Source="Buttons/refresh_32x32.png"
-                    Width="21.5"
-                    Height="21.5"
-                    Stretch="Uniform"/>
-            </Button>
-        </Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-        <!-- Episode -->
-        <Grid Grid.Row="3" Margin="0,0,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock
-                Grid.Column="0"
-                Text="Episode:"
-                VerticalAlignment="Center"/>
-            <ComboBox 
-                x:Name="MissionComboBox"
-                Background="#F2F2F2"
-                Grid.Column="1"
-                Height="26"
-                Margin="0,0,6,0"
-                SelectionChanged="MissionComboBox_SelectionChanged"/>
-            <Button
-                x:Name="RefreshEpisodesButton"
-                Grid.Column="2"
-                Width="38"
-                Height="26"
-                HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                Padding="0"
-                BorderBrush="#999999"
-                ToolTip="Refresh episodes">
-                <Image
-                    Source="/Tiny Quake Launcher;component/Buttons/refresh_32x32.png"
-                    Width="21.5"
-                    Height="21.5"
-                    Stretch="Uniform"/>
-            </Button>
-        </Grid>
-
-        <!-- Map -->
-        <Grid Grid.Row="4" Margin="0,0,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <TextBlock
-                x:Name="MapLabel"
-                Grid.Column="0"
-                Text="Map:"
-                VerticalAlignment="Center"/>
-
-            <ComboBox
-                x:Name="MapComboBox"
-                Background="#F2F2F2"
-                Grid.Column="1"
-                Height="26"
-                Margin="0,0,6,0"
-                SelectionChanged="MapComboBox_SelectionChanged">
-
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding DisplayName}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="{Binding Foreground}"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" Value="False">
-                                            <Setter Property="Foreground" Value="DarkGray"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-
-            </ComboBox>
-
-            <Button
-                x:Name="ClearMapButton"
-                Grid.Column="2"
-                Width="38"
-                Height="26"
-                Content="✖"
-                FontSize="15"
-                BorderBrush="#999999"
-                ToolTip="Clear map selection"
-                Click="ClearMapButton_Click"/>
-        </Grid>
-
-        <!-- Difficulty -->
-        <Grid Grid.Row="5" Margin="0,0,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <TextBlock
-                x:Name="DifficultyLabel"
-                Grid.Column="0"
-                Text="Difficulty:"
-                VerticalAlignment="Center"/>
-
-            <ComboBox
-                x:Name="DifficultyComboBox"
-                Background="#F2F2F2"
-                Grid.Column="1"
-                Height="26"
-                Margin="0,0,6,0"
-                SelectionChanged="DifficultyComboBox_SelectionChanged">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Name}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="{Binding Foreground}"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" Value="False">
-                                            <Setter Property="Foreground" Value="DarkGray"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-
-            <Button
-                x:Name="ClearDifficultyButton"
-                Grid.Column="2"
-                Width="38"
-                Height="26"
-                Content="✖"
-                FontSize="15"
-                BorderBrush="#999999"
-                ToolTip="Clear difficulty selection"
-                Click="ClearDifficultyButton_Click"/>
-        </Grid>
-
-        <!-- Demo -->
-        <Grid Grid.Row="6" Margin="0,0,0,15">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-
-            <TextBlock
-                x:Name="DemoLabel"
-                Grid.Column="0"
-                Text="Demo:"
-                VerticalAlignment="Center"/>
-
-            <ComboBox
-                x:Name="DemoComboBox"
-                Background="#F2F2F2"
-                Grid.Column="1"
-                Height="26"
-                Margin="0,0,6,0"
-                ToolTip="{Binding SelectedItem.Name, RelativeSource={RelativeSource Self}}"
-                SelectionChanged="DemoComboBox_SelectionChanged">
-
-                <ComboBox.Style>
-                    <Style TargetType="ComboBox">
-                        <Setter Property="Foreground" Value="Black"/>
-                        <Setter Property="BorderBrush" Value="Black"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="DarkGray"/>
-                                <Setter Property="BorderBrush" Value="DarkGray"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ComboBox.Style>
-
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock
-                            Text="{Binding Name}"
-                            ToolTip="{Binding Name}"
-                            TextTrimming="CharacterEllipsis">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="Black"/>
-                                    <Style.Triggers>
-                                        <DataTrigger
-                                            Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
-                                            Value="False">
-                                            <Setter Property="Foreground" Value="DarkGray"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-
-            </ComboBox>
-
-            <Button
-                x:Name="ClearDemoButton"
-                Grid.Column="2"
-                Width="38"
-                Height="26"
-                Content="✖"
-                FontSize="15"
-                BorderBrush="#999999"
-                ToolTip="Clear demo selection"
-                Click="ClearDemoButton_Click"/>
-        </Grid>
-
-        <!-- Command arguments -->
-        <Grid Grid.Row="7" Margin="0,0,0,10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <TextBlock
-                Grid.Row="0"
-                Text="Command line arguments:"
-                Margin="0,0,0,5"/>
-            <RichTextBox
-                x:Name="CommandArgumentsTextBox"
-                Grid.Row="1"
-                Height="60"
-                IsReadOnly="True"
-                VerticalScrollBarVisibility="Auto"
-                Padding="8"
-                Background="#FFFFFF"
-                BorderBrush="#999999"/>
-        </Grid>
-
-        <!-- Extra arguments -->
-        <Grid Grid.Row="8" Margin="0,0,0,15">
-
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <TextBlock
-                Grid.Row="0"
-                Text="Extra arguments:"
-                Margin="0,0,0,5"/>
-
-            <Grid Grid.Row="1">
-
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Manual extra arguments -->
-                <TextBox
-                    x:Name="ExtraArgumentsTextBox"
-                    Grid.Column="0"
-                    Height="60"
-                    TextWrapping="Wrap"
-                    VerticalScrollBarVisibility="Auto"
-                    VerticalContentAlignment="Top"
-                    Padding="8"
-                    Margin="0,0,6,0"
-                    Background="#FFFFFF"
-                    BorderBrush="#999999"
-                    ToolTip="Manual arguments added to the general command line"
-                    TextChanged="ExtraArgumentsTextBox_TextChanged"/>
-
-                <!-- Action buttons -->
-                <StackPanel
-                    Grid.Column="1"
-                    Orientation="Vertical">
-
-                    <!-- Clear extra arguments -->
+                <!-- Quake folder -->
+                <Grid Grid.Row="0" Margin="0,15,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Grid.Column="0"
+                        Text="Game folder:"
+                        VerticalAlignment="Center"/>
+                    <TextBox
+                        x:Name="QuakeFolderTextBox"
+                        Grid.Column="1"
+                        Height="26"
+                        Margin="0,0,6,0"
+                        VerticalContentAlignment="Center"
+                        ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
                     <Button
-                    x:Name="ClearExtraArgumentsButton"
-                    Width="38"
-                    Height="26"
-                    Margin="0,0,0,8"
-                    Content="✖"
-                    FontSize="15"
-                    BorderBrush="#999999"
-                    ToolTip="Clear extra arguments"
-                    Click="ClearExtraArgumentsButton_Click">
+                        x:Name="BrowseButton"
+                        Grid.Column="2"
+                        Content="📂"
+                        FontSize="13"
+                        Width="38"
+                        Height="26"
+                        BorderBrush="#999999"
+                        ToolTip="Browse Quake folder"
+                        Click="BrowseButton_Click"/>
+                </Grid>
 
-                        <Button.Style>
-                            <Style TargetType="Button">
-                                <Setter
-                                Property="Foreground"
-                                Value="Red"/>
+                <!-- Resolution -->
+                <Grid Grid.Row="1" Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
+                    <TextBlock
+                        Grid.Column="0"
+                        Text="Resolution:"
+                        VerticalAlignment="Center"/>
+
+                    <ComboBox
+                        x:Name="ResolutionComboBox"
+                        Grid.Column="1"
+                        Height="26"
+                        Margin="0,0,6,0"
+                        Background="#F2F2F2"
+                        SelectionChanged="ResolutionComboBox_SelectionChanged"/>
+
+                    <Button
+                        x:Name="ClearResolutionButton"
+                        Grid.Column="2"
+                        Width="38"
+                        Height="26"
+                        Content="✖"
+                        FontSize="15"
+                        BorderBrush="#999999"
+                        ToolTip="Reset to default resolution"
+                        Click="ClearResolutionButton_Click"/>
+                </Grid>
+
+                <!-- Engine -->
+                <Grid Grid.Row="2" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Grid.Column="0"
+                        Text="Engine:"
+                        VerticalAlignment="Center"/>
+                    <ComboBox
+                        x:Name="EngineComboBox"
+                        Background="#F2F2F2"
+                        Grid.Column="1"
+                        Height="26"
+                        Margin="0,0,6,0"
+                        SelectionChanged="EngineComboBox_SelectionChanged"/>
+                    <Button
+                        x:Name="RefreshEnginesButton"
+                        Grid.Column="2"
+                        Width="38"
+                        Height="26"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Padding="0"
+                        BorderBrush="#999999"
+                        ToolTip="Refresh engines">
+                        <Grid>
+                            <Image
+                                Source="Buttons/refresh_32x32.png"
+                                Width="21.5"
+                                Height="21.5"
+                                Stretch="Uniform">
+                                <Image.Style>
+                                    <Style TargetType="Image">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Image.Style>
+                            </Image>
+                            <Rectangle
+                                Width="21.5"
+                                Height="21.5"
+                                Fill="#6F6E71"
+                                Stretch="Uniform">
+                                <Rectangle.OpacityMask>
+                                    <ImageBrush
+                                        ImageSource="Buttons/refresh_32x32.png"
+                                        Stretch="Uniform"/>
+                                </Rectangle.OpacityMask>
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                        </Grid>
+                    </Button>
+                </Grid>
+
+                <!-- Episode -->
+                <Grid Grid.Row="3" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Grid.Column="0"
+                        Text="Episode:"
+                        VerticalAlignment="Center"/>
+                    <ComboBox 
+                        x:Name="MissionComboBox"
+                        Background="#F2F2F2"
+                        Grid.Column="1"
+                        Height="26"
+                        Margin="0,0,6,0"
+                        SelectionChanged="MissionComboBox_SelectionChanged"/>
+                    <Button
+                        x:Name="RefreshEpisodesButton"
+                        Grid.Column="2"
+                        Width="38"
+                        Height="26"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Padding="0"
+                        BorderBrush="#999999"
+                        ToolTip="Refresh episodes">
+                        <Grid>
+                            <Image
+                                Source="Buttons/refresh_32x32.png"
+                                Width="21.5"
+                                Height="21.5"
+                                Stretch="Uniform">
+                                <Image.Style>
+                                    <Style TargetType="Image">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Image.Style>
+                            </Image>
+                            <Rectangle
+                                Width="21.5"
+                                Height="21.5"
+                                Fill="#6F6E71"
+                                Stretch="Uniform">
+                                <Rectangle.OpacityMask>
+                                    <ImageBrush
+                                        ImageSource="Buttons/refresh_32x32.png"
+                                        Stretch="Uniform"/>
+                                </Rectangle.OpacityMask>
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                        </Grid>
+                    </Button>
+                </Grid>
+
+                <!-- Map -->
+                <Grid Grid.Row="4" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        x:Name="MapLabel"
+                        Grid.Column="0"
+                        Text="Map:"
+                        VerticalAlignment="Center"/>
+
+                    <ComboBox
+                        x:Name="MapComboBox"
+                        Background="#F2F2F2"
+                        Grid.Column="1"
+                        Height="26"
+                        Margin="0,0,6,0"
+                        SelectionChanged="MapComboBox_SelectionChanged">
+
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayName}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{Binding Foreground}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" Value="False">
+                                                    <Setter Property="Foreground" Value="DarkGray"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+
+                    </ComboBox>
+
+                    <Button
+                        x:Name="ClearMapButton"
+                        Grid.Column="2"
+                        Width="38"
+                        Height="26"
+                        Content="✖"
+                        FontSize="15"
+                        BorderBrush="#999999"
+                        ToolTip="Clear map selection"
+                        Click="ClearMapButton_Click"/>
+                </Grid>
+
+                <!-- Difficulty -->
+                <Grid Grid.Row="5" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        x:Name="DifficultyLabel"
+                        Grid.Column="0"
+                        Text="Difficulty:"
+                        VerticalAlignment="Center"/>
+
+                    <ComboBox
+                        x:Name="DifficultyComboBox"
+                        Background="#F2F2F2"
+                        Grid.Column="1"
+                        Height="26"
+                        Margin="0,0,6,0"
+                        SelectionChanged="DifficultyComboBox_SelectionChanged">
+
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{Binding Foreground}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" Value="False">
+                                                    <Setter Property="Foreground" Value="DarkGray"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <Button
+                        x:Name="ClearDifficultyButton"
+                        Grid.Column="2"
+                        Width="38"
+                        Height="26"
+                        Content="✖"
+                        FontSize="15"
+                        BorderBrush="#999999"
+                        ToolTip="Clear difficulty selection"
+                        Click="ClearDifficultyButton_Click"/>
+                </Grid>
+
+                <!-- Demo -->
+                <Grid Grid.Row="6" Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        x:Name="DemoLabel"
+                        Grid.Column="0"
+                        Text="Demo:"
+                        VerticalAlignment="Center"/>
+
+                    <ComboBox
+                        x:Name="DemoComboBox"
+                        Background="#F2F2F2"
+                        Grid.Column="1"
+                        Height="26"
+                        Margin="0,0,6,0"
+                        ToolTip="{Binding SelectedItem.Name, RelativeSource={RelativeSource Self}}"
+                        SelectionChanged="DemoComboBox_SelectionChanged">
+
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox">
+                                <Setter Property="Foreground" Value="Black"/>
+                                <Setter Property="BorderBrush" Value="Black"/>
                                 <Style.Triggers>
-                                    <Trigger
-                                    Property="IsEnabled"
-                                    Value="False">
-                                        <Setter
-                                    Property="Foreground"
-                                    Value="DarkGray"/>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Foreground" Value="DarkGray"/>
+                                        <Setter Property="BorderBrush" Value="DarkGray"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
-                        </Button.Style>
-                    </Button>
+                        </ComboBox.Style>
 
-                    <!-- Desktop shortcut -->
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock
+                                        Text="{Binding Name}"
+                                        ToolTip="{Binding Name}"
+                                        TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="Black"/>
+                                            <Style.Triggers>
+                                                <DataTrigger
+                                                        Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                                        Value="False">
+                                                    <Setter Property="Foreground" Value="DarkGray"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+
+                    </ComboBox>
+
                     <Button
-                        x:Name="CreateDesktopShortcutButton"
+                        x:Name="ClearDemoButton"
+                        Grid.Column="2"
                         Width="38"
                         Height="26"
-                        Content="🔗"
+                        Content="✖"
                         FontSize="15"
                         BorderBrush="#999999"
-                        ToolTip="Create desktop shortcut"
-                        Click="CreateDesktopShortcutButton_Click"/>
+                        ToolTip="Clear demo selection"
+                        Click="ClearDemoButton_Click"/>
+                </Grid>
 
-                </StackPanel>
+                <!-- Command arguments -->
+                <Grid Grid.Row="7" Margin="0,0,0,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock
+                        Grid.Row="0"
+                        Text="Command line arguments:"
+                        Margin="0,0,0,5"/>
+                    <RichTextBox
+                        x:Name="CommandArgumentsTextBox"
+                        Grid.Row="1"
+                        Height="60"
+                        IsReadOnly="True"
+                        VerticalScrollBarVisibility="Auto"
+                        Padding="8"
+                        Background="#FFFFFF"
+                        BorderBrush="#999999"/>
+                </Grid>
 
+                <!-- Extra arguments -->
+                <Grid Grid.Row="8" Margin="0,0,0,15">
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Grid.Row="0"
+                        Text="Extra arguments:"
+                        Margin="0,0,0,5"/>
+
+                    <Grid Grid.Row="1">
+
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Manual extra arguments -->
+                        <TextBox
+                            x:Name="ExtraArgumentsTextBox"
+                            Grid.Column="0"
+                            Height="60"
+                            TextWrapping="Wrap"
+                            VerticalScrollBarVisibility="Auto"
+                            VerticalContentAlignment="Top"
+                            Padding="8"
+                            Margin="0,0,6,0"
+                            Background="#FFFFFF"
+                            BorderBrush="#999999"
+                            ToolTip="Manual arguments added to the general command line"
+                            TextChanged="ExtraArgumentsTextBox_TextChanged"/>
+
+                        <!-- Action buttons -->
+                        <StackPanel
+                             Grid.Column="1"
+                             Orientation="Vertical">
+
+                            <!-- Clear extra arguments -->
+                            <Button
+                                x:Name="ClearExtraArgumentsButton"
+                                Width="38"
+                                Height="26"
+                                Margin="0,0,0,8"
+                                Content="✖"
+                                FontSize="15"
+                                BorderBrush="#999999"
+                                ToolTip="Clear extra arguments"
+                                Click="ClearExtraArgumentsButton_Click">
+
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter
+                                            Property="Foreground"
+                                            Value="Red"/>
+
+                                        <Style.Triggers>
+                                            <Trigger
+                                                Property="IsEnabled"
+                                                Value="False">
+                                                <Setter
+                                                Property="Foreground"
+                                                Value="#808080"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <!-- Desktop shortcut -->
+                            <Button
+                                x:Name="CreateDesktopShortcutButton"
+                                Width="38"
+                                Height="26"
+                                Content="🔗"
+                                FontSize="15"
+                                BorderBrush="#999999"
+                                ToolTip="Create desktop shortcut"
+                                Click="CreateDesktopShortcutButton_Click"/>
+
+                        </StackPanel>
+
+                    </Grid>
+                </Grid>
+
+                <!-- Launch -->
+                <Grid
+                    Grid.Row="9"
+                    Margin="0,10,0,10">
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="45"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Launch button -->
+                    <Button
+                        x:Name="LaunchButton"
+                        Grid.Row="0"
+                        Content="LAUNCH QUAKE"
+                        Height="45"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        BorderBrush="#999999"
+                        Click="LaunchButton_Click"/>
+
+                    <!-- Close after launch -->
+                    <CheckBox
+                        x:Name="CloseAfterLaunchCheckBox"
+                        Grid.Row="1"
+                        Content="Close after launch"
+                        HorizontalAlignment="Left"
+                        Margin="-1,8,0,0"/>
+
+                </Grid>
+
+                <!-- Bottom status bar -->
+                <Grid Grid.Row="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        x:Name="StatusText"
+                        Grid.Column="0"
+                        Text="Select your Quake folder."
+                        VerticalAlignment="Center"/>
+                    <TextBlock
+                        Grid.Column="1"
+                        Text="v1.0"
+                        Foreground="#B0B0B0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"/>
+                </Grid>
             </Grid>
 
-        </Grid>
+        </TabItem>
 
-        <!-- Launch -->
-        <Grid
-            Grid.Row="9"
-            Margin="0,10,0,10">
+        <TabItem 
+            Header="Multiplayer" Margin="0.5,0,0,0">
+            <local:MainWindowMultiplayer />
+        </TabItem>
 
-            <Grid.RowDefinitions>
-                <RowDefinition Height="45"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <!-- Launch button -->
-            <Button
-                x:Name="LaunchButton"
-                Grid.Row="0"
-                Content="LAUNCH QUAKE"
-                Height="45"
-                FontSize="18"
-                FontWeight="Bold"
-                BorderBrush="#999999"
-                Click="LaunchButton_Click"/>
-
-            <!-- Close after launch -->
-            <CheckBox
-                x:Name="CloseAfterLaunchCheckBox"
-                Grid.Row="1"
-                Content="Close after launch"
-                HorizontalAlignment="Left"
-                Margin="-1,8,0,0"/>
-
-        </Grid>
-
-        <!-- Bottom status bar -->
-        <Grid Grid.Row="10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock
-                x:Name="StatusText"
-                Grid.Column="0"
-                Text="Select your Quake folder."
-                VerticalAlignment="Center"/>
-            <TextBlock
-                Grid.Column="1"
-                Text="v0.9.9"
-                Foreground="#B0B0B0"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"/>
-        </Grid>
-
-    </Grid>
+    </TabControl>
 </Window>

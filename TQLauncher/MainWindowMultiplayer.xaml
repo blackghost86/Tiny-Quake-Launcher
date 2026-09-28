@@ -1,0 +1,572 @@
+<UserControl x:Class="TinyQuakeLauncher.MainWindowMultiplayer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#F2F2F2">
+
+    <Grid Background="#F2F2F2">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Quake folder -->
+        <Grid Grid.Row="0" Margin="0,15,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                Grid.Column="0"
+                Text="Game folder:"
+                VerticalAlignment="Center"/>
+            <TextBox
+                x:Name="QuakeFolderTextBoxMultiplayer"
+                    Grid.Column="1"
+                    Height="26"
+                    Margin="0,0,6,0"
+                        VerticalContentAlignment="Center"
+                        ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+            <Button
+                x:Name="BrowseButtonMultiplayer"
+                    Grid.Column="2"
+                    Content="📂"
+                    FontSize="13"
+                    Width="38"
+                    Height="26"
+                    BorderBrush="#999999"
+                    ToolTip="Browse Quake folder"
+                    Click="Multiplayer_BrowseButton_Click"/>
+        </Grid>
+
+        <!-- Resolution -->
+        <Grid Grid.Row="1" Margin="0,0,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                Grid.Column="0"
+                Text="Resolution:"
+                VerticalAlignment="Center"/>
+
+            <ComboBox
+                x:Name="ResolutionComboBoxMultiplayer"
+                Grid.Column="1"
+                Height="26"
+                Margin="0,0,6,0"
+                Background="#F2F2F2"
+                SelectionChanged="Multiplayer_ResolutionComboBox_SelectionChanged"/>
+
+            <Button
+                x:Name="ClearResolutionButtonMultiplayer"
+                Grid.Column="2"
+                Width="38"
+                Height="26"
+                Content="✖"
+                FontSize="15"
+                BorderBrush="#999999"
+                ToolTip="Reset to default resolution"
+                Click="Multiplayer_ClearResolutionButton_Click"/>
+        </Grid>
+
+        <!-- Engine -->
+        <Grid Grid.Row="2" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                Grid.Column="0"
+                Text="Engine:"
+                VerticalAlignment="Center"/>
+            <ComboBox
+                x:Name="EngineComboBoxMultiplayer"
+                Background="#F2F2F2"
+                Grid.Column="1"
+                Height="26"
+                Margin="0,0,6,0"
+                SelectionChanged="Multiplayer_EngineComboBox_SelectionChanged"/>
+            <Button
+                x:Name="RefreshEnginesButtonMultiplayer"
+                Grid.Column="2"
+                Width="38"
+                Height="26"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Padding="0"
+                BorderBrush="#999999"
+                ToolTip="Refresh engines">
+                <Grid>
+                    <Image
+                        Source="Buttons/refresh_32x32.png"
+                        Width="21.5"
+                        Height="21.5"
+                        Stretch="Uniform">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger
+                                        Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                        Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+
+                    <Rectangle
+                        Width="21.5"
+                        Height="21.5">
+                        <Rectangle.Fill>
+                            <SolidColorBrush Color="#6F6E71"/>
+                        </Rectangle.Fill>
+                        <Rectangle.OpacityMask>
+                            <ImageBrush
+                                ImageSource="Buttons/refresh_32x32.png"
+                                Stretch="Uniform"/>
+                        </Rectangle.OpacityMask>
+                        <Rectangle.Style>
+                            <Style TargetType="Rectangle">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger
+                                        Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                        Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Rectangle.Style>
+                    </Rectangle>
+                </Grid>
+            </Button>
+        </Grid>
+
+        <!-- Episode -->
+        <Grid Grid.Row="3" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                Grid.Column="0"
+                Text="Episode:"
+                VerticalAlignment="Center"/>
+            <ComboBox 
+                x:Name="MissionComboBoxMultiplayer"
+                Background="#F2F2F2"
+                Grid.Column="1"
+                Height="26"
+                Margin="0,0,6,0"
+                SelectionChanged="Multiplayer_MissionComboBox_SelectionChanged"/>
+            <Button
+                x:Name="RefreshEpisodesButtonMultiplayer"
+                Grid.Column="2"
+                Width="38"
+                Height="26"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Padding="0"
+                BorderBrush="#999999"
+                ToolTip="Refresh episodes">
+                <Grid>
+                    <Image
+                        Source="/Tiny Quake Launcher;component/Buttons/refresh_32x32.png"
+                        Width="21.5"
+                        Height="21.5"
+                        Stretch="Uniform">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger
+                                        Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                        Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+
+                    <Rectangle
+                        Width="21.5"
+                        Height="21.5">
+                        <Rectangle.Fill>
+                            <SolidColorBrush Color="#6F6E71"/>
+                        </Rectangle.Fill>
+                        <Rectangle.OpacityMask>
+                            <ImageBrush
+                                ImageSource="/Tiny Quake Launcher;component/Buttons/refresh_32x32.png"
+                                Stretch="Uniform"/>
+                        </Rectangle.OpacityMask>
+                        <Rectangle.Style>
+                            <Style TargetType="Rectangle">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger
+                                        Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                        Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Rectangle.Style>
+                    </Rectangle>
+                </Grid>
+            </Button>
+        </Grid>
+
+        <!-- Map -->
+        <Grid Grid.Row="4" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                x:Name="MapLabelMultiplayer"
+                Grid.Column="0"
+                Text="Map:"
+                VerticalAlignment="Center"/>
+
+            <ComboBox
+                x:Name="MapComboBoxMultiplayer"
+                Background="#F2F2F2"
+                Grid.Column="1"
+                Height="26"
+                Margin="0,0,6,0"
+                SelectionChanged="Multiplayer_MapComboBox_SelectionChanged">
+
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding DisplayName}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{Binding Foreground}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}" Value="False">
+                                            <Setter Property="Foreground" Value="DarkGray"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+
+            </ComboBox>
+
+            <Button
+                x:Name="ClearMapButtonMultiplayer"
+                Grid.Column="2"
+                Width="38"
+                Height="26"
+                Content="✖"
+                FontSize="15"
+                BorderBrush="#999999"
+                ToolTip="Clear map selection"
+                Click="Multiplayer_ClearMapButton_Click"/>
+        </Grid>
+
+        <!-- Mode -->
+        <Grid Grid.Row="5" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                x:Name="ModeLabelMultiplayer"
+                Grid.Column="0"
+                Text="Mode:"
+                VerticalAlignment="Center"/>
+
+            <ComboBox
+                x:Name="ModeComboBoxMultiplayer"
+                Background="#F2F2F2"
+                Grid.Column="1"
+                Height="26"
+                Margin="0,0,6,0"
+                SelectionChanged="Multiplayer_ModeComboBox_SelectionChanged">
+
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{Binding Foreground}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding IsEnabled, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                            Value="False">
+                                            <Setter Property="Foreground" Value="DarkGray"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <Button
+                x:Name="ClearModeButtonMultiplayer"
+                Grid.Column="2"
+                Width="38"
+                Height="26"
+                Content="✖"
+                FontSize="15"
+                BorderBrush="#999999"
+                ToolTip="Clear mode selection"
+                Click="Multiplayer_ClearModeButton_Click"/>
+        </Grid>
+
+        <!-- Multiplayer settings -->
+        <StackPanel
+            Grid.Row="6"
+            Orientation="Horizontal"
+            HorizontalAlignment="Left"
+            Margin="0,5,0,10">
+
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="0,0,19.5,0">
+                <CheckBox
+                    x:Name="FragLimitCheckBoxMultiplayer"
+                    VerticalAlignment="Center"
+                    Checked="LimitCheckBox_Changed"
+                    Unchecked="LimitCheckBox_Changed"/>
+                <!-- Renamed to Kill limit -->
+                <TextBlock
+                    Text="Kill limit"
+                    VerticalAlignment="Center"
+                    Margin="4,0,0,0"/>
+            </StackPanel>
+
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="0,0,19.5,0">
+                <CheckBox
+                    x:Name="FlagLimitCheckBoxMultiplayer"
+                    VerticalAlignment="Center"
+                    Checked="LimitCheckBox_Changed"
+                    Unchecked="LimitCheckBox_Changed"/>
+                <TextBlock
+                    Text="Flag limit"
+                    VerticalAlignment="Center"
+                    Margin="4,0,0,0"/>
+            </StackPanel>
+
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="0,0,19.5,0">
+                <CheckBox
+                    x:Name="TimeLimitCheckBoxMultiplayer"
+                    VerticalAlignment="Center"
+                    Checked="LimitCheckBox_Changed"
+                    Unchecked="LimitCheckBox_Changed"/>
+                <TextBlock
+                    Text="Time limit"
+                    VerticalAlignment="Center"
+                    Margin="4,0,0,0"/>
+            </StackPanel>
+
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center">
+                <CheckBox
+                    x:Name="MaxPlayersCheckBoxMultiplayer"
+                    VerticalAlignment="Center"
+                    Checked="LimitCheckBox_Changed"
+                    Unchecked="LimitCheckBox_Changed"/>
+                <TextBlock
+                    Text="Max players"
+                    VerticalAlignment="Center"
+                    Margin="4,0,0,0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Command arguments -->
+        <Grid Grid.Row="7" Margin="0,10,0,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <TextBlock
+                Grid.Row="0"
+                Text="Command line arguments:"
+                Margin="0,0,0,5"/>
+            <RichTextBox
+                x:Name="CommandArgumentsTextBoxMultiplayer"
+                Grid.Row="1"
+                Height="60"
+                IsReadOnly="True"
+                VerticalScrollBarVisibility="Auto"
+                Padding="8"
+                Background="#FFFFFF"
+                BorderBrush="#999999"/>
+        </Grid>
+
+        <!-- Extra arguments -->
+        <Grid Grid.Row="8" Margin="0,0,0,15">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock
+                Grid.Row="0"
+                Text="Extra arguments:"
+                Margin="0,0,0,5"/>
+
+            <Grid Grid.Row="1">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Manual extra arguments -->
+                <TextBox
+                    x:Name="ExtraArgumentsTextBoxMultiplayer"
+                    Grid.Column="0"
+                    Height="60"
+                    TextWrapping="Wrap"
+                    VerticalScrollBarVisibility="Auto"
+                    VerticalContentAlignment="Top"
+                    Padding="8"
+                    Margin="0,0,6,0"
+                    Background="#FFFFFF"
+                    BorderBrush="#999999"
+                    ToolTip="Manual arguments added to the general command line"
+                    TextChanged="Multiplayer_ExtraArgumentsTextBox_TextChanged"/>
+
+                <!-- Action buttons -->
+                <StackPanel
+                    Grid.Column="1"
+                    Orientation="Vertical">
+
+                    <!-- Clear extra arguments -->
+                    <Button
+                        x:Name="ClearExtraArgumentsButtonMultiplayer"
+                        Width="38"
+                        Height="26"
+                        Margin="0,0,0,8"
+                        Content="✖"
+                        FontSize="15"
+                        BorderBrush="#999999"
+                        ToolTip="Clear extra arguments"
+                        Click="Multiplayer_ClearExtraArgumentsButton_Click">
+
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter
+                                    Property="Foreground"
+                                    Value="Red"/>
+
+                                <Style.Triggers>
+                                    <Trigger
+                                        Property="IsEnabled"
+                                        Value="False">
+                                        <Setter
+                                            Property="Foreground"
+                                            Value="#808080"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <!-- Desktop shortcut -->
+                    <Button
+                        x:Name="CreateDesktopShortcutButtonMultiplayer"
+                        Width="38"
+                        Height="26"
+                        Content="🔗"
+                        FontSize="15"
+                        BorderBrush="#999999"
+                        ToolTip="Create desktop shortcut"
+                        Click="Multiplayer_CreateDesktopShortcutButton_Click"/>
+
+                </StackPanel>
+
+            </Grid>
+        </Grid>
+
+        <!-- Launch -->
+        <Grid
+            Grid.Row="9"
+            Margin="0,10,0,10">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="45"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Launch button -->
+            <Button
+                x:Name="LaunchButtonMultiplayer"
+                Grid.Row="0"
+                Content="LAUNCH QUAKE"
+                Height="45"
+                FontSize="18"
+                FontWeight="Bold"
+                BorderBrush="#999999"
+                Click="Multiplayer_LaunchButton_Click"/>
+
+            <!-- Close after launch -->
+            <CheckBox
+                x:Name="CloseAfterLaunchCheckBoxMultiplayer"
+                Grid.Row="1"
+                Content="Close after launch"
+                HorizontalAlignment="Left"
+                Margin="-1,8,0,0"/>
+
+        </Grid>
+
+        <!-- Bottom status bar -->
+        <Grid Grid.Row="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                x:Name="StatusTextMultiplayer"
+                Grid.Column="0"
+                Text="Select your Quake folder."
+                VerticalAlignment="Center"/>
+            <TextBlock
+                Grid.Column="1"
+                Text="v1.0"
+                Foreground="#B0B0B0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+
+</UserControl>

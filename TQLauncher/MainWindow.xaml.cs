@@ -63,6 +63,8 @@ public partial class MainWindow : Window
 
     private readonly MapDetector2 MapDetector2 = new();
 
+    private readonly MapDetector3 MapDetector3 = new();
+
     private readonly DemoDetector2 demoDetector2 = new();
 
     private readonly DemoDetector3 demoDetector3 = new();
@@ -70,6 +72,7 @@ public partial class MainWindow : Window
     private readonly QuakeHandler quakeHandler = new();
 
     private readonly Quake2Handler quake2Handler = new();
+    private readonly Quake3Handler quake3Handler = new();
 
     private static readonly string SettingsFolder =
         Path.Combine(
@@ -80,7 +83,7 @@ public partial class MainWindow : Window
     private static readonly string SettingsFile =
         Path.Combine(
             SettingsFolder,
-            "TQLauncher.json");
+            "TQLauncherTab1.json");
 
     private bool restoreMapSelectionCleared;
     private bool restoreDifficultySelectionCleared;
@@ -89,6 +92,7 @@ public partial class MainWindow : Window
     private bool updatingCommandArguments;
     private bool commandArgumentsEdited;
     private string lastAcceptedQuakeFolder = "";
+    private bool suppressNoEpisodeWarning;
 
     public MainWindow()
     {
@@ -145,6 +149,7 @@ public partial class MainWindow : Window
         restoringSavedSelections = false;
 
         ClearResolutionButton.IsEnabled = false;
+        RefreshEnginesButton.IsEnabled = false;
         RefreshEpisodesButton.IsEnabled = false;
 
         LoadSavedQuakeFolder();
@@ -551,11 +556,13 @@ public partial class MainWindow : Window
             DetectQuakeInstallation(
                 selectedFolder);
 
-            // Default difficulty is set to Normal.
+            // Default difficulty is always set to Normal.
             if (DifficultyComboBox.Items.Count > 1)
             {
                 DifficultyComboBox.SelectedIndex = 2;
             }
+
+            UpdateDifficultyControlsState();
         }
     }
 
@@ -1006,6 +1013,16 @@ public partial class MainWindow : Window
                 quakeFolder);
         }
 
+        // Quakespasm and Quakespasm-Spiked are special because the selected
+        // folder can be a parent such as "Games". Prefer episodes in the
+        // QS/QSS folder itself; if none, use exactly one folder above.
+        if (IsQuakespasmEngine(engine))
+        {
+            return GetQuakespasmGameFolder(
+                engine,
+                quakeFolder);
+        }
+
         // Ironwail has its own handler-specific game-root resolution.
         if (string.Equals(
                 Path.GetFileName(engine.ExecutablePath),
@@ -1111,6 +1128,124 @@ public partial class MainWindow : Window
         return quakeFolder;
     }
 
+    private static bool IsQuakespasmEngine(
+        Engine engine)
+    {
+        string executableName =
+            Path.GetFileName(engine.ExecutablePath);
+
+        return string.Equals(
+                   executableName,
+                   "quakespasm.exe",
+                   StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(
+                   executableName,
+                   "quakespasm-sdl12.exe",
+                   StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(
+                   executableName,
+                   "quakespasm-spiked-win32.exe",
+                   StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(
+                   executableName,
+                   "quakespasm-spiked-win64.exe",
+                   StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(
+                   engine.Name,
+                   "Quakespasm",
+                   StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(
+                   engine.Name,
+                   "Quakespasm SDL",
+                   StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(
+                   engine.Name,
+                   "Quakespasm-Spiked",
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetQuakespasmGameFolder(
+        Engine engine,
+        string quakeFolder)
+    {
+        string? engineDirectory =
+            Path.GetDirectoryName(
+                engine.ExecutablePath);
+
+        if (string.IsNullOrWhiteSpace(engineDirectory) ||
+            !Directory.Exists(engineDirectory))
+        {
+            return quakeFolder;
+        }
+
+        // If QS/QSS have their own Quake data/episodes, prefer that folder.
+        if (ContainsGameDirectory(
+                engineDirectory,
+                engine.Game) ||
+            HasQuakespasmEpisodes(
+                engineDirectory))
+        {
+            return engineDirectory;
+        }
+
+        // QS/QSS is installed inside a Quake folder. If the engine folder
+        // itself has no episodes, use one directory level above it.
+        DirectoryInfo? parent =
+            Directory.GetParent(engineDirectory);
+
+        if (parent != null &&
+            Directory.Exists(parent.FullName))
+        {
+            string parentFolder =
+                parent.FullName
+                    .TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar);
+
+            if (ContainsGameDirectory(
+                    parentFolder,
+                    engine.Game) ||
+                HasQuakespasmEpisodes(
+                    parentFolder))
+            {
+                return parentFolder;
+            }
+        }
+
+        // If neither QS/QSS nor its immediate parent contains usable Quake
+        // data, keep the selected folder as the final fallback.
+        return quakeFolder;
+    }
+
+    private bool HasQuakespasmEpisodes(
+        string folder)
+    {
+        if (!Directory.Exists(folder))
+        {
+            return false;
+        }
+
+        List<MissionPack> detected =
+            missionPackDetector
+                .DetectMissionPacks(folder);
+
+        // These names can represent separate Quake installations when a
+        // parent folder such as "Games" contains multiple Quake folders.
+        // They are not QS/QSS episodes.
+        detected.RemoveAll(
+            missionPack =>
+                string.Equals(
+                    missionPack.DetectedDirectory,
+                    "Quake",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    missionPack.DetectedDirectory,
+                    "Quake GOG",
+                    StringComparison.OrdinalIgnoreCase));
+
+        return detected.Count > 0;
+    }
+
     private static bool ContainsGameDirectory(
         string folder,
         QuakeGame game)
@@ -1192,13 +1327,49 @@ public partial class MainWindow : Window
         }
 
         List<Engine> engines =
-            engineDetector.DetectEngines(quakeFolder);
+            new List<Engine>();
 
-        engines.AddRange(
-            engineDetector2.DetectEngines(quakeFolder));
+        try
+        {
+            engines.AddRange(
+                engineDetector.DetectEngines(quakeFolder));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Ignore protected folders encountered by an engine detector.
+        }
+        catch (IOException)
+        {
+            // Ignore folders that cannot be read.
+        }
 
-        engines.AddRange(
-            engineDetector3.DetectEngines(quakeFolder));
+        try
+        {
+            engines.AddRange(
+                engineDetector2.DetectEngines(quakeFolder));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Ignore protected folders encountered by an engine detector.
+        }
+        catch (IOException)
+        {
+            // Ignore folders that cannot be read.
+        }
+
+        try
+        {
+            engines.AddRange(
+                engineDetector3.DetectEngines(quakeFolder));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Ignore protected folders encountered by an engine detector.
+        }
+        catch (IOException)
+        {
+            // Ignore folders that cannot be read.
+        }
 
         return engines.Count > 0;
     }
@@ -1225,7 +1396,16 @@ public partial class MainWindow : Window
     private void DetectQuakeInstallation(
         string quakeFolder)
     {
-        DetectEngines(quakeFolder);
+        suppressNoEpisodeWarning = true;
+
+        try
+        {
+            DetectEngines(quakeFolder);
+        }
+        finally
+        {
+            suppressNoEpisodeWarning = false;
+        }
 
         if (EngineComboBox.Items.Count == 0)
         {
@@ -1286,6 +1466,7 @@ public partial class MainWindow : Window
             ClearDifficultyButton.IsEnabled = false;
             ClearDemoButton.IsEnabled = false;
             ClearExtraArgumentsButton.IsEnabled = false;
+            RefreshEnginesButton.IsEnabled = false;
             RefreshEpisodesButton.IsEnabled = false;
             UpdateDemoControlsState();
 
@@ -1304,11 +1485,11 @@ public partial class MainWindow : Window
             CommandArgumentsTextBox.Document.Blocks.Clear();
 
             StatusText.Text =
-                "No Quake engine(s) detected.";
+                "No engine(s) detected inside selected folder(s).";
 
             System.Windows.MessageBox.Show(
-                "No Quake engine(s) detected.",
-                "Warning",
+                "No engine(s) detected inside selected folder(s).",
+                "Singleplayer",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
 
@@ -1318,6 +1499,7 @@ public partial class MainWindow : Window
         // Select the first engine before building the resolution list so
         // the initial resolution set matches the selected engine.
         EngineComboBox.SelectedIndex = 0;
+        RefreshEnginesButton.IsEnabled = true;
 
         // Rebuild resolution and difficulty selectors.
         SetupResolutions();
@@ -1363,14 +1545,36 @@ public partial class MainWindow : Window
         else if (engine?.Game == QuakeGame.Quake3)
         {
             missionPacks =
-                missionPackDetector3
-                    .DetectMissionPacks(detectionFolder);
+                quake3Handler.DetectMissionPacks(
+                    engine,
+                    detectionFolder,
+                    missionPackDetector3);
         }
         else
         {
             missionPacks =
                 missionPackDetector
                     .DetectMissionPacks(detectionFolder);
+        }
+
+        // Quakespasm and Quakespasm-Spiked may use the selected parent
+        // folder as their game-data root. If that parent also contains
+        // separate Quake installations, those installation folders are not
+        // episodes for QS/QSS and must not appear in the drop-down.
+        if (engine != null &&
+            engine.Game == QuakeGame.Quake1 &&
+            IsQuakespasmEngine(engine))
+        {
+            missionPacks.RemoveAll(
+                missionPack =>
+                    string.Equals(
+                        missionPack.DetectedDirectory,
+                        "Quake",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        missionPack.DetectedDirectory,
+                        "Quake GOG",
+                        StringComparison.OrdinalIgnoreCase));
         }
 
         foreach (MissionPack missionPack in missionPacks)
@@ -1382,6 +1586,17 @@ public partial class MainWindow : Window
         {
             MissionComboBox.SelectedIndex = 0;
 
+            // An episode was detected, so restore the normal difficulty
+            // options and use Normal as the default.
+            if (DifficultyComboBox.Items.Count > 2)
+            {
+                DifficultyComboBox.SelectedIndex = 2;
+            }
+            else
+            {
+                SetupDifficultyOptions();
+            }
+
             StatusText.Text =
                 $"Found {EngineComboBox.Items.Count} engine(s) and " +
                 $"{MissionComboBox.Items.Count} episode(s).";
@@ -1389,11 +1604,74 @@ public partial class MainWindow : Window
         else
         {
             StatusText.Text =
-                "No Quake game folder(s) detected.";
+                "No episode(s) detected inside selected folder(s).";
+
+            // Apply the no-episode UI state before showing the warning so the
+            // refresh button and difficulty selector are already empty
+            // while the warning is being displayed.
+            RefreshEpisodesButton.IsEnabled = false;
+            ClearMapButton.IsEnabled = false;
+            ClearDifficultyButton.IsEnabled = false;
+            ClearDemoButton.IsEnabled = false;
+
+            MapComboBox.Items.Clear();
+            MapComboBox.SelectedIndex = -1;
+            MapComboBox.ToolTip = null;
+
+            DemoComboBox.Items.Clear();
+            DemoComboBox.SelectedIndex = -1;
+            DemoComboBox.ToolTip = null;
+
+            DifficultyComboBox.Items.Clear();
+            DifficultyComboBox.SelectedIndex = -1;
+            DifficultyComboBox.IsEnabled = true;
+            ClearDifficultyButton.IsEnabled = false;
+            DifficultyLabel.Foreground =
+                System.Windows.SystemColors.ControlTextBrush;
+            UpdateDifficultyControlsState();
+            UpdateCommandArguments();
+
+            if (!suppressNoEpisodeWarning)
+            {
+                System.Windows.MessageBox.Show(
+                    "No episode(s) detected inside selected folder(s).",
+                    "Singleplayer",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        if (MissionComboBox.Items.Count == 0)
+        {
+            MapComboBox.Items.Clear();
+            MapComboBox.SelectedIndex = -1;
+            MapComboBox.ToolTip = null;
+
+            DemoComboBox.Items.Clear();
+            DemoComboBox.SelectedIndex = -1;
+            DemoComboBox.ToolTip = null;
+
+            DifficultyComboBox.Items.Clear();
+            DifficultyComboBox.SelectedIndex = -1;
+            DifficultyComboBox.IsEnabled = true;
+            ClearDifficultyButton.IsEnabled = false;
+            DifficultyLabel.Foreground =
+                System.Windows.SystemColors.ControlTextBrush;
+            UpdateDifficultyControlsState();
+            UpdateCommandArguments();
+            return;
         }
 
         DetectMaps();
         DetectDemos();
+
+        if (MissionComboBox.Items.Count == 0)
+        {
+            ClearMapButton.IsEnabled = false;
+            ClearDifficultyButton.IsEnabled = false;
+            ClearDemoButton.IsEnabled = false;
+            RefreshEpisodesButton.IsEnabled = false;
+        }
     }
 
     private string GetEpisodeFolder(MissionPack missionPack)
@@ -1457,7 +1735,7 @@ public partial class MainWindow : Window
             EngineComboBox.SelectedItem as Engine;
 
         // With no engine detected, keep Map as an empty, usable drop-down.
-        // Do not add or select a synthetic "None" entry.
+        // Do not add any value or select a synthetic "None" entry.
         if (engine == null)
         {
             MapComboBox.IsEnabled = true;
@@ -1515,13 +1793,24 @@ public partial class MainWindow : Window
         bool isQuake2 =
             engine.Game == QuakeGame.Quake2;
 
+        bool isQuake3 =
+            engine.Game == QuakeGame.Quake3;
+
         List<MapInfo> maps;
 
+        // Quake 2 map detector.
         if (isQuake2)
         {
             maps =
                 MapDetector2.DetectMaps(gameFolder);
         }
+        // Quake 3 map detector.
+        else if (isQuake3)
+        {
+            maps =
+                MapDetector3.DetectMaps(gameFolder);
+        }
+        // Quake 1 map detector.
         else
         {
             maps =
@@ -1589,8 +1878,11 @@ public partial class MainWindow : Window
                     ? quake2Handler.GetDefaultMap(
                         missionPack,
                         engine)
-                    : quakeHandler.GetDefaultMap(
-                        missionPack);
+                    : isQuake3
+                        ? quake3Handler.GetDefaultMap(
+                            missionPack)
+                        : quakeHandler.GetDefaultMap(
+                            missionPack);
 
             int defaultIndex = -1;
 
@@ -1630,11 +1922,48 @@ public partial class MainWindow : Window
         UpdateCommandArguments();
     }
 
+    private bool IsQuake3Game()
+    {
+        Engine? engine =
+            EngineComboBox.SelectedItem as Engine;
+
+        return engine?.Game == QuakeGame.Quake3;
+    }
+
+    private void UpdateDifficultyControlsState()
+    {
+        // Quake 3 difficulty and demo selection disable the difficulty
+        // selector. When an engine is present but no episode is detected,
+        // keep the difficulty selector available but empty.
+        bool noEpisodes =
+            MissionComboBox.Items.Count == 0;
+
+        bool disabled =
+            IsQuake3Game() ||
+            demoSelectionActive;
+
+        if (disabled && DifficultyComboBox.SelectedIndex != 0)
+        {
+            DifficultyComboBox.SelectedIndex = 0;
+        }
+
+        DifficultyComboBox.IsEnabled =
+            noEpisodes || !disabled;
+        ClearDifficultyButton.IsEnabled =
+            !noEpisodes &&
+            !disabled &&
+            DifficultyComboBox.SelectedIndex > 0;
+
+        DifficultyLabel.Foreground =
+            disabled && !noEpisodes
+                ? System.Windows.Media.Brushes.DarkGray
+                : System.Windows.SystemColors.ControlTextBrush;
+    }
+
     private void DetectDemos()
     {
         demoSelectionActive = false;
         MapComboBox.IsEnabled = true;
-        DifficultyComboBox.IsEnabled = true;
 
         DemoComboBox.Items.Clear();
         DemoComboBox.SelectedIndex = -1;
@@ -1723,15 +2052,26 @@ public partial class MainWindow : Window
         {
             if (!string.IsNullOrWhiteSpace(demo.FileName))
             {
+                string demoFileTitle =
+                    RemoveQuake3DemoExtension(
+                        demo.FileName);
+
                 string title =
                     !string.IsNullOrWhiteSpace(demo.MapTitle)
-                        ? demo.MapTitle
-                        : demo.Name;
+                        ? engine.Game == QuakeGame.Quake1
+                            ? RemoveQuake1MapExtension(
+                                demo.MapTitle)
+                            : RemoveQuake3DemoExtension(
+                                demo.MapTitle)
+                        : demoFileTitle;
 
+                // Quake 3 demo titles are always capitalized.
                 title =
                     CapitalizeFirstLetter(
                         title);
 
+                // Keep the complete filename, including its extension, before
+                // the separator. Only the demo title after "|" hides it.
                 demo.Name =
                     $"{demo.FileName} | {title}";
             }
@@ -1743,6 +2083,71 @@ public partial class MainWindow : Window
         UpdateDemoControlsState();
         UpdateDemoToolTip();
         UpdateCommandArguments();
+    }
+
+    private static string RemoveQuake1MapExtension(
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        string fileName =
+            Path.GetFileName(value);
+
+        if (fileName.EndsWith(
+                ".bsp",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return fileName[..^4];
+        }
+
+        return fileName;
+    }
+
+    private static string RemoveQuake3DemoExtension(
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        string fileName =
+            Path.GetFileName(value);
+
+        string[] extensions =
+        {
+            ".dm3",
+            ".dm_48",
+            ".dm_66",
+            ".dm_68"
+        };
+
+        foreach (string extension in extensions)
+        {
+            if (fileName.EndsWith(
+                    extension,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return fileName[..^extension.Length];
+            }
+        }
+
+        return fileName;
+    }
+
+    private static string LowercaseFirstLetter(
+        string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        return char.ToLowerInvariant(value[0]) +
+               value[1..];
     }
 
     private static string CapitalizeFirstLetter(
@@ -1789,6 +2194,131 @@ public partial class MainWindow : Window
                 : System.Windows.Media.Brushes.DarkGray;
     }
 
+    private static IEnumerable<string> EnumerateFilesSafe(
+        string rootFolder)
+    {
+        if (!Directory.Exists(rootFolder))
+        {
+            yield break;
+        }
+
+        Stack<string> folders =
+            new();
+
+        folders.Push(rootFolder);
+
+        while (folders.Count > 0)
+        {
+            string currentFolder =
+                folders.Pop();
+
+            string folderName =
+                Path.GetFileName(
+                    currentFolder.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar));
+
+            // Windows system/protected folders that should never be scanned.
+            // Sometimes these folders can be present or hidden.
+            if (string.Equals(
+                    folderName,
+                    "$Recycle.Bin",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "Config.Msi",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "PerfLogs",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "System Volume Information",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string[] files;
+
+            try
+            {
+                files =
+                    Directory.GetFiles(
+                        currentFolder,
+                        "*",
+                        SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Skip folders the launcher is not allowed to read.
+                continue;
+            }
+            catch (IOException)
+            {
+                // Skip folders that disappear or otherwise cannot be read.
+                continue;
+            }
+
+            foreach (string file in files)
+            {
+                yield return file;
+            }
+
+            string[] subdirectories;
+
+            try
+            {
+                subdirectories =
+                    Directory.GetDirectories(
+                        currentFolder,
+                        "*",
+                        SearchOption.TopDirectoryOnly);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                continue;
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            foreach (string subdirectory in subdirectories)
+            {
+                string subdirectoryName =
+                    Path.GetFileName(
+                        subdirectory.TrimEnd(
+                            Path.DirectorySeparatorChar,
+                            Path.AltDirectorySeparatorChar));
+
+                // Exclude Windows system/protected folders.
+                if (string.Equals(
+                        subdirectoryName,
+                        "$Recycle.Bin",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "Config.Msi",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "PerfLogs",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(
+                        subdirectoryName,
+                        "System Volume Information",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                folders.Push(subdirectory);
+            }
+        }
+    }
+
     private static bool MapIsInsidePk3OrZip(
         string fileName,
         string gameFolder)
@@ -1805,10 +2335,8 @@ public partial class MainWindow : Window
 
         try
         {
-            foreach (string archiveFile in Directory.GetFiles(
-                gameFolder,
-                "*",
-                SearchOption.AllDirectories))
+            foreach (string archiveFile in EnumerateFilesSafe(
+                gameFolder))
             {
                 string extension =
                     Path.GetExtension(archiveFile);
@@ -1914,7 +2442,17 @@ public partial class MainWindow : Window
         QuakeGame currentEngineGame =
             currentEngine?.Game ?? QuakeGame.Quake1;
 
-        DetectEngines(quakeFolder);
+        suppressNoEpisodeWarning = true;
+
+        try
+        {
+            DetectEngines(quakeFolder);
+        }
+        finally
+        {
+            suppressNoEpisodeWarning = false;
+        }
+
 
         Engine? refreshedEngine =
             EngineComboBox.Items
@@ -1943,7 +2481,18 @@ public partial class MainWindow : Window
         else
         {
             StatusText.Text =
-                "No Quake engine(s) detected.";
+                "No engine(s) detected inside selected folder(s).";
+        }
+
+
+        // Refreshing engines can leave the same engine selected, so the
+        // selection-changed event may not fire. Re-detect episodes explicitly
+        // so the episode refresh button and empty difficulty state stay in sync.
+        if (EngineComboBox.Items.Count > 0)
+        {
+            DetectMissionPacks(quakeFolder);
+            RefreshEpisodesButton.IsEnabled =
+                MissionComboBox.Items.Count > 0;
         }
     }
 
@@ -2001,7 +2550,7 @@ public partial class MainWindow : Window
         else
         {
             StatusText.Text =
-                "No Quake game folder(s) detected.";
+                "No episode(s) detected inside selected folder(s).";
         }
     }
 
@@ -2027,6 +2576,8 @@ public partial class MainWindow : Window
         {
             UpdateCommandArguments();
         }
+
+        UpdateDifficultyControlsState();
     }
 
     private void MissionComboBox_SelectionChanged(
@@ -2034,6 +2585,27 @@ public partial class MainWindow : Window
         SelectionChangedEventArgs e)
     {
         UpdateMissionToolTip();
+
+        if (MissionComboBox.SelectedItem is not MissionPack)
+        {
+            ClearMapButton.IsEnabled = false;
+            ClearDifficultyButton.IsEnabled = false;
+            ClearDemoButton.IsEnabled = false;
+
+            MapComboBox.Items.Clear();
+            MapComboBox.SelectedIndex = -1;
+
+            DemoComboBox.Items.Clear();
+            DemoComboBox.SelectedIndex = -1;
+
+            DifficultyComboBox.Items.Clear();
+            DifficultyComboBox.SelectedIndex = -1;
+            ClearDifficultyButton.IsEnabled = false;
+            UpdateDifficultyControlsState();
+            UpdateCommandArguments();
+            return;
+        }
+
         DetectMaps();
         DetectDemos();
 
@@ -2043,6 +2615,8 @@ public partial class MainWindow : Window
         {
             DifficultyComboBox.SelectedIndex = 2;
         }
+
+        UpdateDifficultyControlsState();
     }
 
     private void MapComboBox_SelectionChanged(
@@ -2110,17 +2684,14 @@ public partial class MainWindow : Window
         // Normal is the default difficulty whenever a supported engine is available.
         // Index 0 is None, followed by Easy, Normal, Hard and Nightmare.
         DifficultyComboBox.SelectedIndex = 2;
-        ClearDifficultyButton.IsEnabled = false;
+        UpdateDifficultyControlsState();
     }
 
     private void DifficultyComboBox_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
     {
-        ClearDifficultyButton.IsEnabled =
-            !demoSelectionActive &&
-            DifficultyComboBox.SelectedIndex > 0;
-
+        UpdateDifficultyControlsState();
         UpdateCommandArguments();
     }
 
@@ -2137,26 +2708,16 @@ public partial class MainWindow : Window
         MapComboBox.IsEnabled =
             !demoSelectionActive;
 
-        DifficultyComboBox.IsEnabled =
-            !demoSelectionActive;
-
         ClearMapButton.IsEnabled =
             !demoSelectionActive &&
             MapComboBox.SelectedIndex > 0;
-
-        ClearDifficultyButton.IsEnabled =
-            !demoSelectionActive &&
-            DifficultyComboBox.SelectedIndex > 0;
 
         MapLabel.Foreground =
             demoSelectionActive
                 ? System.Windows.Media.Brushes.DarkGray
                 : System.Windows.SystemColors.ControlTextBrush;
 
-        DifficultyLabel.Foreground =
-            demoSelectionActive
-                ? System.Windows.Media.Brushes.DarkGray
-                : System.Windows.SystemColors.ControlTextBrush;
+        UpdateDifficultyControlsState();
 
         if (!restoringSavedSelections &&
             DemoComboBox.SelectedItem is Demo)
@@ -2244,22 +2805,18 @@ public partial class MainWindow : Window
         demoSelectionActive = false;
 
         MapComboBox.IsEnabled = true;
-        DifficultyComboBox.IsEnabled = true;
 
-        // Re-evaluate the Clear buttons from the actual selections.
+        // Re-evaluate all difficulty state after the demo is cleared.
+        // Quake 3 remains disabled and set to None.
         ClearMapButton.IsEnabled =
             MapComboBox.SelectedIndex > 0;
-
-        ClearDifficultyButton.IsEnabled =
-            DifficultyComboBox.SelectedIndex > 0;
 
         UpdateDemoControlsState();
 
         MapLabel.Foreground =
             System.Windows.SystemColors.ControlTextBrush;
 
-        DifficultyLabel.Foreground =
-            System.Windows.SystemColors.ControlTextBrush;
+        UpdateDifficultyControlsState();
 
         StatusText.Text =
             "Cleared demo selection.";
@@ -2286,7 +2843,7 @@ public partial class MainWindow : Window
         {
             System.Windows.MessageBox.Show(
                 "Please select an engine first.",
-                "Tiny Quake Launcher",
+                "Warning",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
 
@@ -2297,7 +2854,7 @@ public partial class MainWindow : Window
         {
             System.Windows.MessageBox.Show(
                 "Please select an episode first.",
-                "Tiny Quake Launcher",
+                "Warning",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
 
@@ -2909,6 +3466,11 @@ public partial class MainWindow : Window
                 missionPack.GameDirectory.Trim());
         }
 
+        // Quake 3 needs 512 MB of hunk memory.
+        arguments.Add("+set");
+        arguments.Add("com_hunkmegs");
+        arguments.Add("512");
+
         if (selectedDemo != null)
         {
             arguments.Add("+demo");
@@ -2932,6 +3494,7 @@ public partial class MainWindow : Window
         {
             arguments.Add("+map");
             arguments.Add(mapName);
+
         }
 
         return arguments;
