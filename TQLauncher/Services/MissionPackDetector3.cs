@@ -12,7 +12,7 @@ public class MissionPackDetector3
         {
             new MissionPack
             {
-                Name = "Quake III Arena",
+                Name = "Quake III: Arena",
                 PossibleDirectories = new List<string>
                 {
                     "baseq3"

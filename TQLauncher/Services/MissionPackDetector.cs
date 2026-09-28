@@ -321,7 +321,9 @@ public class MissionPackDetector
                     DecodePakString(nameBytes);
 
                 // PAK directory entry:
-                // 56 bytes name + 4 bytes offset + 4 bytes size.
+                // 56 bytes name
+                // 4 bytes offset
+                // 4 bytes size
                 _ = reader.ReadInt32();
                 _ = reader.ReadInt32();
 
