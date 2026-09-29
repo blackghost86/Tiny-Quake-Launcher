@@ -17,15 +17,15 @@ A simple launcher for Quake 1/2/3 and their mods/mission packs.
 
 # Features planned
 Quake:
-- Quake: Dawn of the Machine (2026) support - done (v0.2)
+- Dawn of the Machine support - done (v0.2)
 - Quake GOG + Quake (Steam) support - done (v0.9.6)
 - Vanilla Quake (Windows) support - done (v0.9.6)
 - Multiplayer support - done (v1.0)
 
 Quake 2:
 - Quake 2 support - done (v0.7)
-- Quake 2 GOG + Quake 2 (Steam) support - done (v0.9.5)
 - Call of the Void support - done (v0.9.5)
+- Quake 2 GOG + Quake 2 (Steam) support - done (v0.9.5)
 - Vanilla Quake 2 (Windows) support - done (v0.9.6)
 - Multiplayer support - done (v1.0)
 
