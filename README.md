@@ -13,7 +13,7 @@ A simple launcher for Quake 1/2/3 and their mods/mission packs.
 - Command line preview based on custom selection.
 - Extra arguments that can be added manually.
 - Custom resolution support/arguments.
-- Multiplayer settings and modes
+- Multiplayer settings and modes.
 
 # Features planned
 Quake:
