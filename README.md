@@ -25,7 +25,7 @@ Quake:
 Quake 2:
 - Quake 2 support - done (v0.7)
 - Quake 2 GOG + Quake 2 (Steam) support - done (v0.9.5)
-- Call of the Void (2025) support - done (v0.9.5)
+- Call of the Void support - done (v0.9.5)
 - Vanilla Quake 2 (Windows) support - done (v0.9.6)
 - Multiplayer support - done (v1.0)
 
