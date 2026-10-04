@@ -4,12 +4,13 @@ A simple launcher for Quake 1/2/3 and their mods/mission packs.
 <img width="378" height="660" alt="image" src="https://github.com/user-attachments/assets/936135ef-bcd3-4859-9498-001d1b0c4a39" />
 
 # Features
-- Runs Quake from your desktop or your main Quake directory.
+- Runs Quake from your main Quake directory or any other folder.
 - Automatic Quake source port detection.
 - Automatic episode/mod detection.
 - Automatic map detection from pak/pk3/zip/custom folders.
 - Automatic demo detection.
 - Difficulty settings for any existing map.
+- Random map at random difficulty.
 - Command line preview based on custom selection.
 - Extra arguments that can be added manually.
 - Custom resolution support/arguments.
@@ -37,6 +38,7 @@ Quake 3:
 All games:
 - Custom resolution support - done (v0.9.9)
 - Proper demo support - done (v1.0)
+- Random map at random difficulty (v1.1)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
