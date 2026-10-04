@@ -4,7 +4,7 @@ A simple launcher for Quake 1/2/3 and their mods/mission packs.
 <img width="378" height="660" alt="image" src="https://github.com/user-attachments/assets/936135ef-bcd3-4859-9498-001d1b0c4a39" />
 
 # Features
-- Runs Quake from your main Quake directory or any other folder.
+- Runs Quake from your main Quake folder or any folder.
 - Automatic Quake source port detection.
 - Automatic episode/mod detection.
 - Automatic map detection from pak/pk3/zip/custom folders.
@@ -14,7 +14,7 @@ A simple launcher for Quake 1/2/3 and their mods/mission packs.
 - Extra arguments that can be added manually.
 - Custom resolution support/arguments.
 - Multiplayer settings and deathmatch rules.
-- Random map at random difficulty.
+- Random map at random difficulties.
 
 # Features planned
 Quake:
