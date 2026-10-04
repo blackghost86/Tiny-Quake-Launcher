@@ -10,11 +10,11 @@ A simple launcher for Quake 1/2/3 and their mods/mission packs.
 - Automatic map detection from pak/pk3/zip/custom folders.
 - Automatic demo detection.
 - Difficulty settings for any existing map.
-- Random map at random difficulty.
 - Command line preview based on custom selection.
 - Extra arguments that can be added manually.
 - Custom resolution support/arguments.
 - Multiplayer settings and deathmatch rules.
+- Random map at random difficulty.
 
 # Features planned
 Quake:
