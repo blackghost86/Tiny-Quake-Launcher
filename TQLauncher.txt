@@ -71,7 +71,6 @@ Changelog
 - Fixed mode drop-down and updated modes for Quake 3.
 - Multiplayer command line args are shown in green.
 
-
 1.0:
 - Redesigned the launcher to have a singleplayer and multiplayer tab.
 - Duplicated some rules to be the same in multiplayer.
