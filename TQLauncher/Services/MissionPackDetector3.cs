@@ -26,6 +26,15 @@ public class MissionPackDetector3
                 {
                     "missionpack"
                 }
+            },
+
+            new MissionPack
+            {
+                Name = "Entity Plus",
+                PossibleDirectories = new List<string>
+                {
+                    "entityplus"
+                }
             }
         };
 
@@ -84,8 +93,7 @@ public class MissionPackDetector3
                 continue;
             }
 
-            // These names represent the standard game folders,
-            // not separate archive-based episodes.
+            // These names represent the standard game folders.
             if (string.Equals(
                     archiveName,
                     "baseq3",
@@ -95,6 +103,25 @@ public class MissionPackDetector3
                     "missionpack",
                     StringComparison.OrdinalIgnoreCase))
             {
+                continue;
+            }
+
+            // Entity Plus can be installed as custom mod.
+            if (string.Equals(
+                    archiveName,
+                    "entityplus",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                detected.Add(
+                    new MissionPack
+                    {
+                        Name = "Entity Plus",
+                        PossibleDirectories = new List<string>
+                        {
+                            "entityplus"
+                        },
+                        DetectedDirectory = archiveFile
+                    });
                 continue;
             }
 
@@ -165,6 +192,10 @@ public class MissionPackDetector3
                 string.Equals(
                     folderName,
                     "missionpack",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    folderName,
+                    "entityplus",
                     StringComparison.OrdinalIgnoreCase))
             {
                 continue;
@@ -222,7 +253,7 @@ public class MissionPackDetector3
             return true;
         }
 
-        // Common Quake 3 game-code files.
+        // Common Quake 3 game files.
         string[] gameCodeNames =
         {
             "qagamex86.dll",

@@ -67,8 +67,7 @@ public class MapDetector3
         }
 
         // Q3 content is commonly stored in PK3 files. ZIP is also supported
-        // because PK3 is a ZIP-compatible archive and custom installations
-        // sometimes use the .zip extension.
+        // because PK3 is a ZIP-compatible archive and custom mods use it.
         try
         {
             foreach (string archiveFile in Directory.GetFiles(
@@ -110,6 +109,15 @@ public class MapDetector3
 
     private static bool IsExcludedMap(string mapName)
     {
+        // Entity Plus includes ep_example; keep it available in the map list.
+        if (string.Equals(
+                mapName,
+                "ep_example",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         // Exclude maps that are not intended for normal gameplay.
         return string.Equals(
                    mapName,
@@ -152,16 +160,7 @@ public class MapDetector3
                         '\\',
                         '/');
 
-                if (!entryPath.StartsWith(
-                        "maps/",
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (!entryPath.EndsWith(
-                        ".bsp",
-                        StringComparison.OrdinalIgnoreCase))
+                if (!IsMapBspEntry(entryPath))
                 {
                     continue;
                 }
@@ -190,6 +189,24 @@ public class MapDetector3
         {
             // Ignore invalid/inaccessible PK3/ZIP files.
         }
+    }
+
+    private static bool IsMapBspEntry(string entryPath)
+    {
+        if (!entryPath.EndsWith(
+                ".bsp",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Accept both maps/<map>.bsp and <mod>/maps/<map>.bsp.
+        return entryPath.StartsWith(
+                   "maps/",
+                   StringComparison.OrdinalIgnoreCase) ||
+               entryPath.Contains(
+                   "/maps/",
+                   StringComparison.OrdinalIgnoreCase);
     }
 
     private static MapInfo CreateMapInfo(

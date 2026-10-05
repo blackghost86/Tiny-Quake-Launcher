@@ -101,6 +101,10 @@ public class EngineDetector
                 "DarkPlaces",
                 executablePath),
 
+            "darkplaces-sdl.exe" => CreateEngine(
+                "DarkPlaces SDL",
+                executablePath),
+
             "mark_v.exe" => CreateEngine(
                 "Mark V",
                 executablePath),

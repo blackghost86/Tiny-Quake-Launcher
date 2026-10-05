@@ -58,6 +58,10 @@ public class EngineDetector3
                 "Quake3e (Vulkan)",
                 executablePath),
 
+            "quake3.exe" => CreateEngine(
+                "Quake III (Steam/GOG)",
+                executablePath),
+
             "fteqw.exe" => CreateEngine(
                 "FTEQW",
                 executablePath),
