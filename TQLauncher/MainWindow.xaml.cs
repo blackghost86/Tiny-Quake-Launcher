@@ -45,6 +45,44 @@ public class LauncherSettings
     public string ExtraArguments { get; set; } = "";
 }
 
+public sealed class MapInfoDisplayConverter : System.Windows.Data.IValueConverter
+{
+    public object Convert(
+        object value,
+        Type targetType,
+        object parameter,
+        System.Globalization.CultureInfo culture)
+    {
+        if (value is not MapInfo map)
+        {
+            return value?.ToString() ?? "";
+        }
+
+        if (string.Equals(map.FileName, "?", StringComparison.Ordinal))
+        {
+            return "Random";
+        }
+
+        if (string.IsNullOrWhiteSpace(map.FileName))
+        {
+            return string.IsNullOrWhiteSpace(map.Title)
+                ? ""
+                : map.Title;
+        }
+
+        return $"{map.FileName} | {map.Title}";
+    }
+
+    public object ConvertBack(
+        object value,
+        Type targetType,
+        object parameter,
+        System.Globalization.CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}
+
 public partial class MainWindow : Window
 {
     private readonly EngineDetector engineDetector = new();
@@ -97,6 +135,24 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        FrameworkElementFactory mapText =
+            new FrameworkElementFactory(typeof(TextBlock));
+        mapText.SetBinding(
+            TextBlock.TextProperty,
+            new System.Windows.Data.Binding
+            {
+                Converter = new MapInfoDisplayConverter()
+            });
+        mapText.SetBinding(
+            TextBlock.ForegroundProperty,
+            new System.Windows.Data.Binding(nameof(MapInfo.Foreground)));
+
+        MapComboBox.ItemTemplate =
+            new DataTemplate(typeof(MapInfo))
+            {
+                VisualTree = mapText
+            };
 
         QuakeFolderTextBox.Padding =
             new Thickness(3,
@@ -182,7 +238,7 @@ public partial class MainWindow : Window
             {
                 System.Windows.MessageBox.Show(
                     "Quake folder was moved or deleted.",
-                    "Tiny Quake Launcher",
+                    "Singleplayer warning",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
 
@@ -343,7 +399,9 @@ public partial class MainWindow : Window
 
             settings.MapSelectionCleared =
                 selectedMap == null ||
-                string.IsNullOrWhiteSpace(selectedMap.FileName);
+                (string.IsNullOrWhiteSpace(selectedMap.FileName) &&
+                 !string.Equals(selectedMap.Title, "Random",
+                     StringComparison.OrdinalIgnoreCase));
 
             if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
             {
@@ -452,6 +510,13 @@ public partial class MainWindow : Window
         {
             MapComboBox.SelectedIndex = 0;
         }
+        else if (string.Equals(
+            settings.MapFileName,
+            "?",
+            StringComparison.Ordinal))
+        {
+            MapComboBox.SelectedIndex = 1;
+        }
         else if (!string.IsNullOrWhiteSpace(
             settings.MapFileName))
         {
@@ -559,7 +624,7 @@ public partial class MainWindow : Window
             // Default difficulty is always set to Normal.
             if (DifficultyComboBox.Items.Count > 1)
             {
-                DifficultyComboBox.SelectedIndex = 2;
+                DifficultyComboBox.SelectedIndex = 3;
             }
 
             UpdateDifficultyControlsState();
@@ -617,7 +682,7 @@ public partial class MainWindow : Window
 
         if (DifficultyComboBox.Items.Count > 1)
         {
-            DifficultyComboBox.SelectedIndex = 2;
+            DifficultyComboBox.SelectedIndex = 3;
         }
     }
 
@@ -855,13 +920,37 @@ public partial class MainWindow : Window
         Engine? engine =
             EngineComboBox.SelectedItem as Engine;
 
-        if (engine?.Game == QuakeGame.Quake2)
+        if (engine?.Game == QuakeGame.Quake2 ||
+            engine?.Game == QuakeGame.Quake3)
         {
-            foreach ((int mode, int width, int height) in
-                     GetQuake2VideoModes())
+            System.Windows.Forms.Screen? primaryScreen =
+                System.Windows.Forms.Screen.PrimaryScreen;
+
+            if (primaryScreen is not null)
             {
-                ResolutionComboBox.Items.Add(
-                    new Resolution(width, height, false));
+                System.Drawing.Rectangle workingArea =
+                    primaryScreen.WorkingArea;
+
+                System.Drawing.Rectangle screenBounds =
+                    primaryScreen.Bounds;
+
+                // Show modes smaller than the primary screen's working area,
+                // plus the exact current fullscreen resolution.
+                IEnumerable<(int Mode, int Width, int Height)> videoModes =
+                    engine.Game == QuakeGame.Quake2
+                        ? GetQuake2VideoModes()
+                        : GetQuake3VideoModes();
+
+                foreach ((int mode, int width, int height) in
+                         videoModes.Where(videoMode =>
+                             (videoMode.Width < workingArea.Width &&
+                              videoMode.Height < workingArea.Height) ||
+                             (videoMode.Width == screenBounds.Width &&
+                              videoMode.Height == screenBounds.Height)))
+                {
+                    ResolutionComboBox.Items.Add(
+                        new Resolution(width, height, false));
+                }
             }
         }
         else
@@ -880,31 +969,87 @@ public partial class MainWindow : Window
     private static IEnumerable<(int Mode, int Width, int Height)>
         GetQuake2VideoModes()
     {
-        // Quake 2 resolution list. The r_mode number is kept with each
-        // resolution so the launch arguments use the same value.
+        // Quake 2 resolutions using a fixed r_mode list.
         return new[]
         {
-            (1, 1920, 1200),
-            (2, 1920, 1080),
-            (3, 1680, 1050),
-            (4, 1600, 1024),
-            (4, 1600, 900),
-            (5, 1440, 900),
-            (6, 1366, 768),
-            (7, 1360, 768),
-            (8, 1280, 1024),
-            (9, 1280, 960),
-            (10, 1280, 800),
-            (11, 1280, 768),
-            (12, 1280, 720),
-            (13, 1152, 864),
-            (14, 1024, 768),
-            (15, 1024, 600),
-            (16, 960, 720),
-            (17, 856, 480),
-            (18, 800, 600),
-            (19, 800, 480),
-            (20, 640, 480)
+            (1, 5120, 2880),
+            (2, 3840, 2400),
+            (3, 3840, 2160),
+            (4, 3440, 1440),
+            (5, 3200, 1800),
+            (6, 2560, 1600),
+            (7, 2560, 1440),
+            (8, 2560, 1080),
+            (9, 2048, 1536),
+            (10, 1920, 1440),
+            (11, 1920, 1200),
+            (12, 1920, 1080),
+            (13, 1680, 1050),
+            (14, 1600, 1200),
+            (15, 1600, 1024),
+            (16, 1600, 900),
+            (17, 1400, 1050),
+            (18, 1440, 900),
+            (19, 1366, 768),
+            (20, 1360, 768),
+            (21, 1280, 1024),
+            (22, 1280, 960),
+            (23, 1280, 800),
+            (24, 1280, 768),
+            (25, 1280, 720),
+            (26, 1152, 864),
+            (27, 1024, 768),
+            (28, 1024, 600),
+            (29, 960, 720),
+            (30, 856, 480),
+            (31, 800, 600),
+            (32, 800, 480),
+            (33, 640, 480)
+        };
+    }
+
+    private static IEnumerable<(int Mode, int Width, int Height)>
+        GetQuake3VideoModes()
+    {
+        // Quake 3 fixed resolution list.
+        return new[]
+        {
+            (1, 5120, 2880),
+            (2, 3840, 2400),
+            (3, 3840, 2160),
+            (4, 3440, 1440),
+            (5, 3200, 1800),
+            (6, 2560, 1600),
+            (7, 2560, 1440),
+            (8, 2560, 1080),
+            (9, 2048, 1536),
+            (10, 1920, 1440),
+            (11, 1920, 1200),
+            (12, 1920, 1080),
+            (13, 1680, 1050),
+            (14, 1600, 1200),
+            (15, 1600, 1024),
+            (16, 1600, 900),
+            (17, 1400, 1050),
+            (18, 1440, 900),
+            (19, 1366, 768),
+            (20, 1360, 768),
+            (21, 1280, 1024),
+            (22, 1280, 960),
+            (23, 1280, 800),
+            (24, 1280, 768),
+            (25, 1280, 720),
+            (26, 1152, 864),
+            (27, 1024, 768),
+            (28, 1024, 600),
+            (29, 960, 720),
+            (30, 856, 480),
+            (31, 800, 600),
+            (32, 800, 480),
+            (33, 640, 480),
+            (34, 512, 384),
+            (35, 400, 300),
+            (36, 320, 240)
         };
     }
 
@@ -971,6 +1116,22 @@ public partial class MainWindow : Window
                 "+set",
                 "r_mode",
                 mode.ToString()
+            };
+        }
+
+        if (engine?.Game == QuakeGame.Quake3)
+        {
+            return new List<string>
+            {
+                "+seta",
+                "r_mode",
+                "-1",
+                "+seta",
+                "r_customwidth",
+                resolution.Width.ToString(),
+                "+seta",
+                "r_customheight",
+                resolution.Height.ToString()
             };
         }
 
@@ -1557,10 +1718,10 @@ public partial class MainWindow : Window
                     .DetectMissionPacks(detectionFolder);
         }
 
-        // Quakespasm and Quakespasm-Spiked may use the selected parent
-        // folder as their game-data root. If that parent also contains
-        // separate Quake installations, those installation folders are not
-        // episodes for QS/QSS and must not appear in the drop-down.
+        // Quakespasm and Quakespasm-Spiked may use the selected parent folder
+        // as their game-data root. If that parent also contains separate
+        // Quake installations, those installation folders are not episodes
+        // for QS/QSS and must not appear in the drop-down.
         if (engine != null &&
             engine.Game == QuakeGame.Quake1 &&
             IsQuakespasmEngine(engine))
@@ -1588,9 +1749,9 @@ public partial class MainWindow : Window
 
             // An episode was detected, so restore the normal difficulty
             // options and use Normal as the default.
-            if (DifficultyComboBox.Items.Count > 2)
+            if (DifficultyComboBox.Items.Count > 3)
             {
-                DifficultyComboBox.SelectedIndex = 2;
+                DifficultyComboBox.SelectedIndex = 3;
             }
             else
             {
@@ -1751,6 +1912,13 @@ public partial class MainWindow : Window
         }
 
         MapComboBox.Items.Add(MapInfo.None);
+        MapComboBox.Items.Add(
+            new MapInfo
+            {
+                FileName = "?",
+                Title = "Random map",
+                Foreground = System.Windows.Media.Brushes.Black
+            });
 
         MissionPack? missionPack =
             MissionComboBox.SelectedItem as MissionPack;
@@ -1899,7 +2067,7 @@ public partial class MainWindow : Window
 
                 if (mapIndex >= 0)
                 {
-                    defaultIndex = mapIndex + 1;
+                    defaultIndex = mapIndex + 2;
                 }
             }
 
@@ -1908,9 +2076,9 @@ public partial class MainWindow : Window
                 MapComboBox.SelectedIndex =
                     defaultIndex;
             }
-            else if (MapComboBox.Items.Count > 1)
+            else if (MapComboBox.Items.Count > 2)
             {
-                MapComboBox.SelectedIndex = 1;
+                MapComboBox.SelectedIndex = 2;
             }
             else
             {
@@ -2485,9 +2653,9 @@ public partial class MainWindow : Window
         }
 
 
-        // Refreshing engines can leave the same engine selected, so the
-        // selection-changed event may not fire. Re-detect episodes explicitly
-        // so the episode refresh button and empty difficulty state stay in sync.
+        // Refreshing engines can leave the same engine selected so the selection-changed
+        // event may not fire. Re-detect episodes explicitly so the episode refresh
+        // button and empty difficulty state stay in sync.
         if (EngineComboBox.Items.Count > 0)
         {
             DetectMissionPacks(quakeFolder);
@@ -2611,9 +2779,9 @@ public partial class MainWindow : Window
 
         if (!restoreMapSelectionCleared &&
             !restoreDifficultySelectionCleared &&
-            DifficultyComboBox.Items.Count > 2)
+            DifficultyComboBox.Items.Count > 3)
         {
-            DifficultyComboBox.SelectedIndex = 2;
+            DifficultyComboBox.SelectedIndex = 3;
         }
 
         UpdateDifficultyControlsState();
@@ -2652,6 +2820,14 @@ public partial class MainWindow : Window
         DifficultyComboBox.Items.Add(
             new Difficulty
             {
+                Name = "Random",
+                Value = -2,
+                Foreground = System.Windows.Media.Brushes.Black
+            });
+
+        DifficultyComboBox.Items.Add(
+            new Difficulty
+            {
                 Name = "Easy",
                 Value = 0,
                 Foreground = HexBrush("#3C3CE8")
@@ -2682,8 +2858,7 @@ public partial class MainWindow : Window
             });
 
         // Normal is the default difficulty whenever a supported engine is available.
-        // Index 0 is None, followed by Easy, Normal, Hard and Nightmare.
-        DifficultyComboBox.SelectedIndex = 2;
+        DifficultyComboBox.SelectedIndex = 3;
         UpdateDifficultyControlsState();
     }
 
@@ -2807,7 +2982,7 @@ public partial class MainWindow : Window
         MapComboBox.IsEnabled = true;
 
         // Re-evaluate all difficulty state after the demo is cleared.
-        // Quake 3 remains disabled and set to None.
+        // Quake 3 difficulty remains disabled and set to None.
         ClearMapButton.IsEnabled =
             MapComboBox.SelectedIndex > 0;
 
@@ -3136,7 +3311,7 @@ public partial class MainWindow : Window
             StringComparison.Ordinal))
         {
             throw new InvalidDataException(
-                "The selected archive is not a valid Quake PAK file.");
+                "The selected archive is not a valid PAK file.");
         }
 
         int directoryOffset = reader.ReadInt32();
@@ -3192,7 +3367,7 @@ public partial class MainWindow : Window
             if (data.Length != entryLength)
             {
                 throw new EndOfStreamException(
-                    "The selected demo could not be read completely from the PAK.");
+                    "The selected demo could not be read completely from the PAK file.");
             }
 
             File.WriteAllBytes(destination, data);
@@ -3200,7 +3375,7 @@ public partial class MainWindow : Window
         }
 
         throw new FileNotFoundException(
-            "The selected demo could not be found inside the PAK archive.",
+            "The selected demo could not be found inside the PAK file.",
             fileName);
     }
 
@@ -3330,20 +3505,46 @@ public partial class MainWindow : Window
         }
 
         // Quake difficulty.
-        if (DifficultyComboBox.SelectedItem is Difficulty difficulty &&
-            difficulty.Value >= 0)
+        if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
         {
-            arguments.Add("+skill");
-            arguments.Add(difficulty.Value.ToString());
+            if (IsRandomDifficultySelected(difficulty))
+            {
+                arguments.Add("+skill");
+                arguments.Add("?");
+            }
+            else if (difficulty.Value >= 0)
+            {
+                arguments.Add("+skill");
+                arguments.Add(difficulty.Value.ToString());
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(mapName))
+        if (IsRandomMapSelected(selectedMap))
+        {
+            arguments.Add("+map");
+            arguments.Add("?");
+        }
+        else if (!string.IsNullOrWhiteSpace(mapName))
         {
             arguments.Add("+map");
             arguments.Add(mapName);
         }
 
         return arguments;
+    }
+
+    private static bool IsRandomDifficultySelected(Difficulty? difficulty)
+    {
+        return difficulty != null && difficulty.Value == -2;
+    }
+
+    private static bool IsRandomMapSelected(MapInfo? map)
+    {
+        return map != null &&
+            string.Equals(
+                map.FileName,
+                "?",
+                StringComparison.Ordinal);
     }
 
     private static bool IsChocolateQuakeEngine(
@@ -3420,15 +3621,28 @@ public partial class MainWindow : Window
         }
 
         // Quake 2 difficulty.
-        if (DifficultyComboBox.SelectedItem is Difficulty difficulty &&
-            difficulty.Value >= 0)
+        if (DifficultyComboBox.SelectedItem is Difficulty difficulty)
         {
-            arguments.Add("+set");
-            arguments.Add("skill");
-            arguments.Add(difficulty.Value.ToString());
+            if (IsRandomDifficultySelected(difficulty))
+            {
+                arguments.Add("+set");
+                arguments.Add("skill");
+                arguments.Add("?");
+            }
+            else if (difficulty.Value >= 0)
+            {
+                arguments.Add("+set");
+                arguments.Add("skill");
+                arguments.Add(difficulty.Value.ToString());
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(mapName))
+        if (IsRandomMapSelected(selectedMap))
+        {
+            arguments.Add("+map");
+            arguments.Add("?");
+        }
+        else if (!string.IsNullOrWhiteSpace(mapName))
         {
             arguments.Add("+map");
             arguments.Add(mapName);
@@ -3490,11 +3704,15 @@ public partial class MainWindow : Window
                     selectedMap.FileName);
         }
 
-        if (!string.IsNullOrWhiteSpace(mapName))
+        if (IsRandomMapSelected(selectedMap))
+        {
+            arguments.Add("+map");
+            arguments.Add("?");
+        }
+        else if (!string.IsNullOrWhiteSpace(mapName))
         {
             arguments.Add("+map");
             arguments.Add(mapName);
-
         }
 
         return arguments;
@@ -3983,6 +4201,68 @@ public partial class MainWindow : Window
 
             List<string> arguments =
                 BuildLaunchArguments();
+
+            // Keep the Random difficulty in the preview, but resolve it at launch.
+            if (selectedDemo == null &&
+                DifficultyComboBox.SelectedItem is Difficulty selectedDifficulty &&
+                IsRandomDifficultySelected(selectedDifficulty))
+            {
+                int skillArgumentIndex =
+                    arguments.FindIndex(argument =>
+                        string.Equals(argument, "+skill", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(argument, "skill", StringComparison.OrdinalIgnoreCase));
+
+                if (skillArgumentIndex >= 0 &&
+                    skillArgumentIndex + 1 < arguments.Count &&
+                    string.Equals(arguments[skillArgumentIndex + 1], "?", StringComparison.Ordinal))
+                {
+                    arguments[skillArgumentIndex + 1] =
+                        new Random().Next(0, 4).ToString();
+                }
+            }
+
+            // Keep "+map ?" in the preview, but resolve Random to a real
+            // detected map immediately before starting the engine.
+            if (selectedDemo == null &&
+                IsRandomMapSelected(selectedMap))
+            {
+                List<MapInfo> availableMaps =
+                    MapComboBox.Items
+                        .OfType<MapInfo>()
+                        .Where(map =>
+                            !string.IsNullOrWhiteSpace(map.FileName) &&
+                            !IsRandomMapSelected(map))
+                        .ToList();
+
+                if (availableMaps.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        "No maps are available for the Random selection.");
+                }
+
+                MapInfo randomMap =
+                    availableMaps[
+                        new Random().Next(availableMaps.Count)];
+
+                int mapArgumentIndex =
+                    arguments.FindIndex(
+                        argument => string.Equals(
+                            argument,
+                            "+map",
+                            StringComparison.OrdinalIgnoreCase));
+
+                if (mapArgumentIndex >= 0 &&
+                    mapArgumentIndex + 1 < arguments.Count &&
+                    string.Equals(
+                        arguments[mapArgumentIndex + 1],
+                        "?",
+                        StringComparison.Ordinal))
+                {
+                    arguments[mapArgumentIndex + 1] =
+                        Path.GetFileNameWithoutExtension(
+                            randomMap.FileName);
+                }
+            }
 
             // The engine's working directory is always the folder containing
             // its executable. This keeps engine-created files (history.txt,

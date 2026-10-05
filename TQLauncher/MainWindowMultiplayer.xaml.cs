@@ -100,6 +100,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
     {
         InitializeComponent();
 
+        ConfigureMapDisplay();
 
         QuakeFolderTextBoxMultiplayer.Padding =
             new Thickness(3,
@@ -182,7 +183,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             {
                 System.Windows.MessageBox.Show(
                     "Quake folder was moved or deleted.",
-                    "Tiny Quake Launcher",
+                    "Multiplayer warning",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
 
@@ -345,7 +346,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 string.IsNullOrWhiteSpace(selectedMap.FileName);
 
             if (ModeComboBoxMultiplayer.SelectedItem
-                is MultiplayerMode mode)
+                is MultiplayerMode mode && mode.Value != 0)
             {
                 settings.Mode =
                     mode.Value;
@@ -517,6 +518,24 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
     private void LimitCheckBox_Changed(object sender, RoutedEventArgs e)
     {
+        if (sender is System.Windows.Controls.CheckBox checkBox)
+        {
+            // Multiplayer limit checkboxes displayed in the menu.
+            string limitName =
+                checkBox.Name == "FragLimitCheckBoxMultiplayer" ? "Kill limit" :
+                checkBox.Name == "FlagLimitCheckBoxMultiplayer" ? "Flag limit" :
+                checkBox.Name == "TimeLimitCheckBoxMultiplayer" ? "Time limit" :
+                checkBox.Name == "MaxPlayersCheckBoxMultiplayer" ? "Max players" :
+                "";
+
+            if (!string.IsNullOrEmpty(limitName))
+            {
+                StatusTextMultiplayer.Text =
+                    $"{limitName} {(checkBox.IsChecked == true
+                    ? "option enabled" : "option disabled")}.";
+            }
+        }
+
         UpdateCommandArguments();
         SaveCurrentSettings();
     }
@@ -565,7 +584,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
             if (ModeComboBoxMultiplayer.Items.Count > 1)
             {
-                ModeComboBoxMultiplayer.SelectedIndex = 0;
+                ModeComboBoxMultiplayer.SelectedIndex = 1;
             }
 
             UpdateModeControlsState();
@@ -623,7 +642,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
         if (ModeComboBoxMultiplayer.Items.Count > 1)
         {
-            ModeComboBoxMultiplayer.SelectedIndex = 0;
+            ModeComboBoxMultiplayer.SelectedIndex = 1;
         }
     }
 
@@ -738,6 +757,32 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         }
     }
 
+    private void ConfigureMapDisplay()
+    {
+        MapInfoDisplayConverter converter =
+            new MapInfoDisplayConverter();
+
+        FrameworkElementFactory textBlock =
+            new FrameworkElementFactory(typeof(TextBlock));
+
+        textBlock.SetBinding(
+            TextBlock.TextProperty,
+            new System.Windows.Data.Binding
+            {
+                Converter = converter
+            });
+
+        textBlock.SetBinding(
+            TextBlock.ForegroundProperty,
+            new System.Windows.Data.Binding(nameof(MapInfo.Foreground)));
+
+        MapComboBoxMultiplayer.ItemTemplate =
+            new DataTemplate
+            {
+                VisualTree = textBlock
+            };
+    }
+
     private void UpdateMapToolTip()
     {
         MapInfo? selectedMap =
@@ -750,7 +795,12 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         }
 
         string displayText =
-            $"{selectedMap.FileName} | {selectedMap.Title}";
+            new MapInfoDisplayConverter().Convert(
+                selectedMap,
+                typeof(string),
+                null!,
+                System.Globalization.CultureInfo.CurrentCulture)
+                ?.ToString() ?? "";
 
         if (MapComboBoxMultiplayer.ActualWidth <= 0)
         {
@@ -820,13 +870,37 @@ System.Windows.Input.TextCompositionEventArgs e)
         Engine? engine =
             EngineComboBoxMultiplayer.SelectedItem as Engine;
 
-        if (engine?.Game == QuakeGame.Quake2)
+        if (engine?.Game == QuakeGame.Quake2 ||
+            engine?.Game == QuakeGame.Quake3)
         {
-            foreach ((int mode, int width, int height) in
-                     GetQuake2VideoModes())
+            System.Windows.Forms.Screen? primaryScreen =
+                System.Windows.Forms.Screen.PrimaryScreen;
+
+            if (primaryScreen is not null)
             {
-                ResolutionComboBoxMultiplayer.Items.Add(
-                    new Resolution(width, height, false));
+                System.Drawing.Rectangle workingArea =
+                    primaryScreen.WorkingArea;
+
+                System.Drawing.Rectangle screenBounds =
+                    primaryScreen.Bounds;
+
+                // Show modes smaller than the primary screen's working area,
+                // plus the exact current fullscreen resolution.
+                IEnumerable<(int Mode, int Width, int Height)> videoModes =
+                    engine.Game == QuakeGame.Quake2
+                        ? GetQuake2VideoModes()
+                        : GetQuake3VideoModes();
+
+                foreach ((int mode, int width, int height) in
+                         videoModes.Where(videoMode =>
+                             (videoMode.Width < workingArea.Width &&
+                              videoMode.Height < workingArea.Height) ||
+                             (videoMode.Width == screenBounds.Width &&
+                              videoMode.Height == screenBounds.Height)))
+                {
+                    ResolutionComboBoxMultiplayer.Items.Add(
+                        new Resolution(width, height, false));
+                }
             }
         }
         else
@@ -845,31 +919,87 @@ System.Windows.Input.TextCompositionEventArgs e)
     private static IEnumerable<(int Mode, int Width, int Height)>
         GetQuake2VideoModes()
     {
-        // Quake 2 resolution list. The r_mode number is kept with each
-        // resolution so the launch arguments use the same value.
+        // Quake 2 resolutions using a fixed r_mode list.
         return new[]
         {
-            (1, 1920, 1200),
-            (2, 1920, 1080),
-            (3, 1680, 1050),
-            (4, 1600, 1024),
-            (4, 1600, 900),
-            (5, 1440, 900),
-            (6, 1366, 768),
-            (7, 1360, 768),
-            (8, 1280, 1024),
-            (9, 1280, 960),
-            (10, 1280, 800),
-            (11, 1280, 768),
-            (12, 1280, 720),
-            (13, 1152, 864),
-            (14, 1024, 768),
-            (15, 1024, 600),
-            (16, 960, 720),
-            (17, 856, 480),
-            (18, 800, 600),
-            (19, 800, 480),
-            (20, 640, 480)
+            (1, 5120, 2880),
+            (2, 3840, 2400),
+            (3, 3840, 2160),
+            (4, 3440, 1440),
+            (5, 3200, 1800),
+            (6, 2560, 1600),
+            (7, 2560, 1440),
+            (8, 2560, 1080),
+            (9, 2048, 1536),
+            (10, 1920, 1440),
+            (11, 1920, 1200),
+            (12, 1920, 1080),
+            (13, 1680, 1050),
+            (14, 1600, 1200),
+            (15, 1600, 1024),
+            (16, 1600, 900),
+            (17, 1400, 1050),
+            (18, 1440, 900),
+            (19, 1366, 768),
+            (20, 1360, 768),
+            (21, 1280, 1024),
+            (22, 1280, 960),
+            (23, 1280, 800),
+            (24, 1280, 768),
+            (25, 1280, 720),
+            (26, 1152, 864),
+            (27, 1024, 768),
+            (28, 1024, 600),
+            (29, 960, 720),
+            (30, 856, 480),
+            (31, 800, 600),
+            (32, 800, 480),
+            (33, 640, 480)
+        };
+    }
+
+    private static IEnumerable<(int Mode, int Width, int Height)>
+        GetQuake3VideoModes()
+    {
+        // Quake 3 fixed resolution list.
+        return new[]
+        {
+            (1, 5120, 2880),
+            (2, 3840, 2400),
+            (3, 3840, 2160),
+            (4, 3440, 1440),
+            (5, 3200, 1800),
+            (6, 2560, 1600),
+            (7, 2560, 1440),
+            (8, 2560, 1080),
+            (9, 2048, 1536),
+            (10, 1920, 1440),
+            (11, 1920, 1200),
+            (12, 1920, 1080),
+            (13, 1680, 1050),
+            (14, 1600, 1200),
+            (15, 1600, 1024),
+            (16, 1600, 900),
+            (17, 1400, 1050),
+            (18, 1440, 900),
+            (19, 1366, 768),
+            (20, 1360, 768),
+            (21, 1280, 1024),
+            (22, 1280, 960),
+            (23, 1280, 800),
+            (24, 1280, 768),
+            (25, 1280, 720),
+            (26, 1152, 864),
+            (27, 1024, 768),
+            (28, 1024, 600),
+            (29, 960, 720),
+            (30, 856, 480),
+            (31, 800, 600),
+            (32, 800, 480),
+            (33, 640, 480),
+            (34, 512, 384),
+            (35, 400, 300),
+            (36, 320, 240)
         };
     }
 
@@ -936,6 +1066,22 @@ System.Windows.Input.TextCompositionEventArgs e)
                 "+set",
                 "r_mode",
                 mode.ToString()
+            };
+        }
+
+        if (engine?.Game == QuakeGame.Quake3)
+        {
+            return new List<string>
+            {
+                "+seta",
+                "r_mode",
+                "-1",
+                "+seta",
+                "r_customwidth",
+                resolution.Width.ToString(),
+                "+seta",
+                "r_customheight",
+                resolution.Height.ToString()
             };
         }
 
@@ -1452,6 +1598,21 @@ System.Windows.Input.TextCompositionEventArgs e)
 
     }
 
+    private static bool IsEntityPlusEpisodeName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string normalized = new string(
+            value.Where(char.IsLetterOrDigit).ToArray());
+
+        return normalized.Contains(
+            "entityplus",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private void DetectMissionPacks(string quakeFolder)
     {
         MissionComboBoxMultiplayer.Items.Clear();
@@ -1499,10 +1660,21 @@ System.Windows.Input.TextCompositionEventArgs e)
                     .DetectMissionPacks(detectionFolder);
         }
 
-        // Quakespasm and Quakespasm-Spiked may use the selected parent
-        // folder as their game-data root. If that parent also contains
-        // separate Quake installations, those installation folders are not
-        // episodes for QS/QSS and must not appear in the drop-down.
+        // Entity Plus is a Quake 3 episode for Singleplayer.
+        // Keep it out of the Multiplayer list selector.
+        if (engine?.Game == QuakeGame.Quake3)
+        {
+            missionPacks.RemoveAll(
+                missionPack =>
+                    IsEntityPlusEpisodeName(missionPack.Name) ||
+                    IsEntityPlusEpisodeName(missionPack.GameDirectory) ||
+                    IsEntityPlusEpisodeName(missionPack.DetectedDirectory));
+        }
+
+        // Quakespasm and Quakespasm-Spiked may use the selected parent folder
+        // as their game-data root. If that parent also contains separate
+        // Quake installations, those installation folders are not episodes
+        // for QS/QSS and must not appear in the drop-down.
         if (engine != null &&
             engine.Game == QuakeGame.Quake1 &&
             IsQuakespasmEngine(engine))
@@ -1532,7 +1704,7 @@ System.Windows.Input.TextCompositionEventArgs e)
             // options and use Normal as the default.
             if (ModeComboBoxMultiplayer.Items.Count > 2)
             {
-                ModeComboBoxMultiplayer.SelectedIndex = 0;
+                ModeComboBoxMultiplayer.SelectedIndex = 1;
             }
             else
             {
@@ -1684,6 +1856,13 @@ System.Windows.Input.TextCompositionEventArgs e)
         }
 
         MapComboBoxMultiplayer.Items.Add(MapInfo.None);
+        MapComboBoxMultiplayer.Items.Add(
+            new MapInfo
+            {
+                FileName = "?",
+                Title = "Random map",
+                Foreground = System.Windows.Media.Brushes.Black
+            });
 
         MissionPack? missionPack =
             MissionComboBoxMultiplayer.SelectedItem as MissionPack;
@@ -1839,7 +2018,7 @@ System.Windows.Input.TextCompositionEventArgs e)
 
                 if (mapIndex >= 0)
                 {
-                    defaultIndex = mapIndex + 1;
+                    defaultIndex = mapIndex + 2;
                 }
             }
 
@@ -1848,9 +2027,9 @@ System.Windows.Input.TextCompositionEventArgs e)
                 MapComboBoxMultiplayer.SelectedIndex =
                     defaultIndex;
             }
-            else if (MapComboBoxMultiplayer.Items.Count > 1)
+            else if (MapComboBoxMultiplayer.Items.Count > 2)
             {
-                MapComboBoxMultiplayer.SelectedIndex = 1;
+                MapComboBoxMultiplayer.SelectedIndex = 2;
             }
             else
             {
@@ -1884,7 +2063,7 @@ System.Windows.Input.TextCompositionEventArgs e)
 
         ClearModeButtonMultiplayer.IsEnabled =
             modeAvailable &&
-            ModeComboBoxMultiplayer.SelectedIndex >= 0;
+            ModeComboBoxMultiplayer.SelectedIndex > 0;
 
         ModeLabelMultiplayer.Foreground =
             modeAvailable
@@ -1932,7 +2111,6 @@ System.Windows.Input.TextCompositionEventArgs e)
                         Path.AltDirectorySeparatorChar));
 
             // Windows system/protected folders that should never be scanned.
-            // Sometimes these folders can be present or hidden.
             if (string.Equals(
                     folderName,
                     "$Recycle.Bin",
@@ -2317,7 +2495,7 @@ System.Windows.Input.TextCompositionEventArgs e)
             !restoreModeSelectionCleared &&
             ModeComboBoxMultiplayer.Items.Count > 0)
         {
-            ModeComboBoxMultiplayer.SelectedIndex = 0;
+            ModeComboBoxMultiplayer.SelectedIndex = 1;
         }
 
         UpdateModeControlsState();
@@ -2373,6 +2551,14 @@ System.Windows.Input.TextCompositionEventArgs e)
         ModeComboBoxMultiplayer.Items.Add(
             new MultiplayerMode
             {
+                Name = "None",
+                Value = 0,
+                Foreground = HexBrush("#000000")
+            });
+
+        ModeComboBoxMultiplayer.Items.Add(
+            new MultiplayerMode
+            {
                 Name = "Standard Mode",
                 Value = 1,
                 Foreground = HexBrush("#000000")
@@ -2394,7 +2580,7 @@ System.Windows.Input.TextCompositionEventArgs e)
                 Foreground = HexBrush("#000000")
             });
 
-        ModeComboBoxMultiplayer.SelectedIndex = 0;
+        ModeComboBoxMultiplayer.SelectedIndex = 1;
         UpdateModeControlsState();
     }
 
@@ -2741,7 +2927,7 @@ System.Windows.Input.TextCompositionEventArgs e)
             BuildResolutionArguments());
 
         if (ModeComboBoxMultiplayer.SelectedItem
-            is MultiplayerMode mode)
+            is MultiplayerMode mode && mode.Value != 0)
         {
             arguments.Add("+deathmatch");
             arguments.Add(mode.Value.ToString());
@@ -2779,6 +2965,15 @@ System.Windows.Input.TextCompositionEventArgs e)
                     selectedMap.FileName);
         }
 
+
+        if (selectedMap != null &&
+            string.Equals(
+                selectedMap.FileName,
+                "?",
+                StringComparison.Ordinal))
+        {
+            mapName = "?";
+        }
 
         if (!string.IsNullOrWhiteSpace(mapName))
         {
@@ -2852,6 +3047,15 @@ System.Windows.Input.TextCompositionEventArgs e)
         }
 
 
+        if (selectedMap != null &&
+            string.Equals(
+                selectedMap.FileName,
+                "?",
+                StringComparison.Ordinal))
+        {
+            mapName = "?";
+        }
+
         if (!string.IsNullOrWhiteSpace(mapName))
         {
             arguments.Add("+map");
@@ -2902,6 +3106,15 @@ System.Windows.Input.TextCompositionEventArgs e)
             mapName =
                 Path.GetFileNameWithoutExtension(
                     selectedMap.FileName);
+        }
+
+        if (selectedMap != null &&
+            string.Equals(
+                selectedMap.FileName,
+                "?",
+                StringComparison.Ordinal))
+        {
+            mapName = "?";
         }
 
         if (!string.IsNullOrWhiteSpace(mapName))
@@ -2955,25 +3168,47 @@ System.Windows.Input.TextCompositionEventArgs e)
                 });
         }
 
-        // Automatically generated arguments are black.
+        // Automatically generated arguments are black, except the
+        // values added by the limit checkboxes which are green.
+        bool previousArgumentWasLimit = false;
+        bool nextArgumentIsLimitValue = false;
+
         foreach (string argument in automaticArguments)
         {
+            bool isLimitSwitch =
+                argument == "+fraglimit" ||
+                argument == "+flaglimit" ||
+                argument == "+timelimit" ||
+                argument == "-listen";
+
+            bool isLimitArgument =
+                isLimitSwitch || nextArgumentIsLimitValue;
+
+            System.Windows.Media.Brush argumentBrush =
+                isLimitArgument
+                    ? System.Windows.Media.Brushes.ForestGreen
+                    : System.Windows.Media.Brushes.Black;
+
             paragraph.Inlines.Add(
                 new Run(" ")
                 {
                     Foreground =
-                        System.Windows.Media.Brushes.Black
+                        isLimitArgument || previousArgumentWasLimit
+                            ? System.Windows.Media.Brushes.ForestGreen
+                            : System.Windows.Media.Brushes.Black
                 });
 
             paragraph.Inlines.Add(
                 new Run(argument)
                 {
-                    Foreground =
-                        System.Windows.Media.Brushes.Black
+                    Foreground = argumentBrush
                 });
+
+            previousArgumentWasLimit = isLimitArgument;
+            nextArgumentIsLimitValue = isLimitSwitch;
         }
 
-        // Only manual extra arguments are blue.
+        // Manual extra arguments are blue.
         bool hasExistingArguments =
             automaticArguments.Count > 0;
 
@@ -3378,6 +3613,49 @@ System.Windows.Input.TextCompositionEventArgs e)
         {
             List<string> arguments =
                 BuildLaunchArguments();
+
+            // Resolve the Random map only for the actual launch. Keep the command
+            // preview as "+map ?" and pass a detected map to the engine.
+            if (MapComboBoxMultiplayer.SelectedItem is MapInfo randomMapSelection &&
+                string.Equals(
+                    randomMapSelection.FileName,
+                    "?",
+                    StringComparison.Ordinal))
+            {
+                List<MapInfo> availableMaps =
+                    MapComboBoxMultiplayer.Items
+                        .OfType<MapInfo>()
+                        .Where(map =>
+                            !string.IsNullOrWhiteSpace(map.FileName) &&
+                            !string.Equals(
+                                map.FileName,
+                                "?",
+                                StringComparison.Ordinal))
+                        .ToList();
+
+                int mapArgumentIndex =
+                    arguments.FindIndex(
+                        argument => string.Equals(
+                            argument,
+                            "+map",
+                            StringComparison.OrdinalIgnoreCase));
+
+                if (availableMaps.Count > 0 &&
+                    mapArgumentIndex >= 0 &&
+                    mapArgumentIndex + 1 < arguments.Count &&
+                    string.Equals(
+                        arguments[mapArgumentIndex + 1],
+                        "?",
+                        StringComparison.Ordinal))
+                {
+                    MapInfo chosenMap =
+                        availableMaps[new Random().Next(availableMaps.Count)];
+
+                    arguments[mapArgumentIndex + 1] =
+                        Path.GetFileNameWithoutExtension(
+                            chosenMap.FileName);
+                }
+            }
 
             // The engine's working directory is always the folder containing
             // its executable. This keeps engine-created files (history.txt,

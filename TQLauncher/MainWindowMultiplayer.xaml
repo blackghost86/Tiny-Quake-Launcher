@@ -346,7 +346,7 @@
             Grid.Row="6"
             Orientation="Horizontal"
             HorizontalAlignment="Left"
-            Margin="0,3,0,10">
+            Margin="0,5,0,10">
 
             <StackPanel
                 Orientation="Horizontal"
@@ -361,7 +361,8 @@
                 <TextBlock
                     Text="Kill limit"
                     VerticalAlignment="Center"
-                    Margin="4,0,0,0"/>
+                    Margin="4,0,0,0"
+                    ToolTip="Activates the maximum number of kills for the match"/>
             </StackPanel>
 
             <StackPanel
@@ -376,7 +377,8 @@
                 <TextBlock
                     Text="Flag limit"
                     VerticalAlignment="Center"
-                    Margin="4,0,0,0"/>
+                    Margin="4,0,0,0"
+                    ToolTip="Activates the flag capture limit for the match"/>
             </StackPanel>
 
             <StackPanel
@@ -391,7 +393,8 @@
                 <TextBlock
                     Text="Time limit"
                     VerticalAlignment="Center"
-                    Margin="4,0,0,0"/>
+                    Margin="4,0,0,0"
+                    ToolTip="Activates the match time limit in minutes"/>
             </StackPanel>
 
             <StackPanel
@@ -405,12 +408,13 @@
                 <TextBlock
                     Text="Max players"
                     VerticalAlignment="Center"
-                    Margin="4,0,0,0"/>
+                    Margin="4,0,0,0"
+                    ToolTip="Activates the maximum number of players"/>
             </StackPanel>
         </StackPanel>
 
         <!-- Command arguments -->
-        <Grid Grid.Row="7" Margin="0,12,0,10">
+        <Grid Grid.Row="7" Margin="0,10,0,10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -422,7 +426,7 @@
             <RichTextBox
                 x:Name="CommandArgumentsTextBoxMultiplayer"
                 Grid.Row="1"
-                Height="60"
+                Height="66"
                 IsReadOnly="True"
                 VerticalScrollBarVisibility="Auto"
                 Padding="8"
@@ -450,22 +454,22 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Manual extra arguments -->
-                <TextBox
-                    x:Name="ExtraArgumentsTextBoxMultiplayer"
-                    Grid.Column="0"
-                    Height="60"
-                    TextWrapping="Wrap"
-                    VerticalScrollBarVisibility="Auto"
-                    VerticalContentAlignment="Top"
-                    Padding="8"
-                    Margin="0,0,6,0"
-                    Background="#FFFFFF"
-                    BorderBrush="#999999"
-                    ToolTip="Manual arguments added to the general command line"
-                    TextChanged="Multiplayer_ExtraArgumentsTextBox_TextChanged"/>
+        <!-- Manual extra arguments -->
+        <TextBox
+            x:Name="ExtraArgumentsTextBoxMultiplayer"
+            Grid.Column="0"
+            Height="60"
+            TextWrapping="Wrap"
+            VerticalScrollBarVisibility="Auto"
+            VerticalContentAlignment="Top"
+            Padding="8"
+            Margin="0,0,6,0"
+            Background="#FFFFFF"
+            BorderBrush="#999999"
+            ToolTip="Manual arguments added to the general command line"
+            TextChanged="Multiplayer_ExtraArgumentsTextBox_TextChanged"/>
 
-                <!-- Action buttons -->
+            <!-- Action buttons -->
                 <StackPanel
                     Grid.Column="1"
                     Orientation="Vertical">
@@ -562,7 +566,7 @@
                 VerticalAlignment="Center"/>
             <TextBlock
                 Grid.Column="1"
-                Text="v1.0"
+                Text="v1.1"
                 Foreground="#B0B0B0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"/>
