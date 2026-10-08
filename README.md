@@ -39,6 +39,7 @@ All games:
 - Custom resolution support - done (v0.9.9)
 - Proper demo support - done (v1.0)
 - Random map at random difficulty (v1.1)
+- Custom profiles - done (v1.2)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
