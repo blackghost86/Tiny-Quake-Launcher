@@ -243,26 +243,162 @@ public class Quake2Handler
             "Q2Pro-NG",
             StringComparison.OrdinalIgnoreCase))
         {
-            return DetectQ2ProNgEpisodes(
-                detectionFolder);
-        }
-        if (string.Equals(engine.Name, "Quake II (Steam)", StringComparison.OrdinalIgnoreCase))
-        {
-            return DetectSteamQuake2Episodes(detectionFolder);
+            List<MissionPack> missionPacks =
+                DetectQ2ProNgEpisodes(
+                    detectionFolder);
+
+            AddQuake2GameDllMods(
+                detectionFolder,
+                missionPacks);
+
+            return missionPacks;
         }
 
+        if (string.Equals(
+            engine.Name,
+            "Quake II (Steam)",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            List<MissionPack> missionPacks =
+                DetectSteamQuake2Episodes(
+                    detectionFolder);
+
+            AddQuake2GameDllMods(
+                detectionFolder,
+                missionPacks);
+
+            return missionPacks;
+        }
 
         if (string.Equals(
             engine.Name,
             "Quake II GOG",
             StringComparison.OrdinalIgnoreCase))
         {
-            return missionPackDetector2
-                .DetectGogMissionPacks(detectionFolder);
+            List<MissionPack> missionPacks =
+                missionPackDetector2
+                    .DetectGogMissionPacks(
+                        detectionFolder);
+
+            AddQuake2GameDllMods(
+                detectionFolder,
+                missionPacks);
+
+            return missionPacks;
         }
 
-        return missionPackDetector2
-            .DetectMissionPacks(detectionFolder);
+        List<MissionPack> detectedMissionPacks =
+            missionPackDetector2
+                .DetectMissionPacks(
+                    detectionFolder);
+
+        AddQuake2GameDllMods(
+            detectionFolder,
+            detectedMissionPacks);
+
+        return detectedMissionPacks;
+    }
+
+    private static void AddQuake2GameDllMods(
+        string detectionFolder,
+        List<MissionPack> missionPacks)
+    {
+        if (!Directory.Exists(detectionFolder))
+        {
+            return;
+        }
+
+        HashSet<string> knownDirectories =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (MissionPack missionPack in missionPacks)
+        {
+            if (!string.IsNullOrWhiteSpace(
+                    missionPack.DetectedDirectory))
+            {
+                knownDirectories.Add(
+                    missionPack.DetectedDirectory);
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                    missionPack.GameDirectory))
+            {
+                knownDirectories.Add(
+                    missionPack.GameDirectory);
+            }
+
+            if (missionPack.PossibleDirectories != null)
+            {
+                foreach (string directory in
+                         missionPack.PossibleDirectories)
+                {
+                    if (!string.IsNullOrWhiteSpace(directory))
+                    {
+                        knownDirectories.Add(directory);
+                    }
+                }
+            }
+        }
+
+        foreach (string directory in
+                 Directory.GetDirectories(
+                     detectionFolder,
+                     "*",
+                     SearchOption.TopDirectoryOnly))
+        {
+            string folderName =
+                Path.GetFileName(
+                    directory.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar));
+
+            if (string.IsNullOrWhiteSpace(folderName) ||
+                knownDirectories.Contains(folderName))
+            {
+                continue;
+            }
+
+            bool containsGameDll;
+
+            // Add Quake 2 mod if it has a variant of gamex86.dll file.
+            try
+            {
+                containsGameDll =
+                    Directory.GetFiles(
+                        directory,
+                        "*.dll",
+                        SearchOption.TopDirectoryOnly)
+                    .Any(
+                        file =>
+                            Path.GetFileName(file)
+                                .Contains(
+                                    "game",
+                                    StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                continue;
+            }
+
+            if (!containsGameDll)
+            {
+                continue;
+            }
+
+            missionPacks.Add(
+                new MissionPack
+                {
+                    Name = folderName,
+                    PossibleDirectories =
+                        new List<string>
+                        {
+                            folderName
+                        },
+                    DetectedDirectory = folderName
+                });
+
+            knownDirectories.Add(folderName);
+        }
     }
 
     private static List<MissionPack> DetectSteamQuake2Episodes(string detectionFolder)
@@ -980,7 +1116,7 @@ public class Quake2Handler
                     continue;
                 }
 
-                // Quake 2 demos are normally under demos/.
+                // Quake 2 demos are normally in demos folder.
                 if (entryOffset < 0 ||
                     entryLength <= 0 ||
                     entryOffset > stream.Length ||
