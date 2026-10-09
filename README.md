@@ -1,7 +1,7 @@
 # Tiny Quake Launcher
 A simple launcher for Quake 1/2/3 and their mods/mission packs.
 
-<img width="378" height="704" alt="image" src="https://github.com/user-attachments/assets/ffdf20e7-51ca-44c8-be85-5c901fae61d1" />
+<img width="378" height="706" alt="image" src="https://github.com/user-attachments/assets/586faf8a-5f4b-445e-aada-9bc1bcbf04ab" />
 
 # Features
 - Runs Quake from your main Quake folder or any folder.
