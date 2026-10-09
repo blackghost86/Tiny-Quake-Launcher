@@ -40,6 +40,7 @@ All games:
 - Custom resolution support - done (v0.9.9)
 - Proper demo support - done (v1.0)
 - Random map at random difficulty (v1.1)
+- Custom profiles - done (v1.2)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
@@ -59,90 +60,138 @@ Install .NET 10.0 Desktop Runtime if prompted.
 
 Changelog
 --------------------------------------------------------------------------
-1.1:
+Version history from the latest to the oldest version released.
+
+1.2
+---
+New features:
+- Added support for Quake 2 mods it they have a variant of gamex86.dll.
+- Added support for Spearmint, vkQuake2 and vkQuake3 source ports.
+- Added profiles for all games that can be saved or deleted.
+
+Bug fixes:
+- Fixed mode display and command line args for all Quake games.
+- Fixed profile display in singleplayer and multiplayer.
+- Fixed status message for saving/deleting a custom profile.
+- Fixed status message for loading a custom profile.
+- Fixed color for map title when any demo is selected.
+- Fixed difficulty selection if demo is selected.
+
+Improvements:
+- Warning added if shortcut is created with random/no maps.
+
+1.1
+---
+New features:
 - Main window is not resizable anymore and fullscreen is disabled.
-- Added support for Quake 3 (Steam/GOG) and Entity Plus.
 - Added support for DarkPlaces and KMQ2 source ports.
 - Added random option to map/difficulty selection.
 - Added tooltips and status messages for multiplayer options.
-- Fixed resolutions for Quake 2 and Quake 3.
-- Fixed resolution command line args for Quake 3.
-- Fixed command line args box to fit more lines of text.
-- Fixed mode drop-down and updated modes for Quake 3.
-- Multiplayer command line args are shown in green.
+- Multiplayer command line args are displayed in green.
 
-1.0:
+Bug fixes:
+- Fixed command line args box to display more lines.
+- Fixed resolutions for Quake 2 and Quake 3.
+
+Quake 3:
+- Added support for Quake 3 (Steam/GOG) and Entity Plus.
+- Fixed resolution command line args for Quake 3.
+- Fixed mode drop-down and updated list for Quake 3.
+
+1.0
+---
+New features:
 - Redesigned the launcher to have a singleplayer and multiplayer tab.
 - Duplicated some rules to be the same in multiplayer.
 - DM, CTF, Journey and Team maps are shown in multiplayer tabs.
 - Tabs are aligned properly and inactive tab has a new color.
 - Added deathmatch mode selection to multiplayer maps.
 - Added kill/flag/time limit and max players.
-- Added an exception to exclude searching in a few system folders.
-- Added +set com_hunkmegs 512 argument needed for Quake 3.
-- Added support for Quakespasm-Spiked Multiplayer.
-- Added support for Quake3e and FTEQW (Q3).
+
+Bug fixes:
 - Fixed a crash when engines are detected with not a single episode.
 - Fixed a crash when a denied folder is accessed.
 - Fixed (again) engine detection for both QS and QSS folders.
 - Fixed custom folders detection for Q2Pro-NG.
 - Fixed buttons when no engine detected.
 - Fixed drop-downs and clear buttons when no episode detected.
+- Fixed demo title for Quake - Fortress.
+- Fixed color for refresh buttons when these are disabled.
+
+Improvements:
+- Added an exception to exclude searching in a few system folders.
+- Added support for Quakespasm-Spiked Multiplayer.
+- Set default map for Quake 2 - Unseen episode.
+- Replaced difficulty with mode selection in multiplayer only.
+- Renamed a few warnings and bottom messages.
+
+Quake 3:
+- Added +set com_hunkmegs 512 argument needed for Quake 3.
+- Added support for Quake3e and FTEQW (Q3).
+- Fixed default maps for Quake 3 Arena and Team Arena.
 - Fixed map names and demo support for Quake 3.
 - Fixed map sorting and excluded test maps.
-- Fixed difficulty for multiplayer (should be left blank).
-- Fixed demo title for Quake - Fortress.
 - Fixed demo sorting according to their extension.
 - Fixed demo title capitalization for Quake 3.
-- Fixed color for refresh buttons when these are disabled.
-- Set default maps for Quake 3 Arena and Team Arena.
-- Set default map for Quake 2 - Unseen episode.
-- Renamed a few warnings and bottom messages.
 - Renamed ioquake3 to ioQuake 3.
 
-0.9.9:
+0.9.9
+-----
+New features:
 - Added custom resolution support (all games) + clear resolution button.
 - Added Quake 3 support for base game + expansion.
 - Added more space between the two buttons near extra args textbox.
+
+Bug fixes:
+- Fixed engine detection for QS and QSS if placed inside a subdir.
+- Fixed episode detection for Q2 Steam + GOG and Q2Pro-NG.
+- Fixed empty difficulty selection and default difficulty.
+- Fixed resolutions when a parent folder is selected.
+- Fixed demo detection for Quake 3.
+- Fixed resolutions and arguments for Quake 2.
+
+Improvements:
 - Resolution drop-down should be empty if no engine detected.
 - Episode refresh button should be unavailable if no engine detected.
-- Changed refresh symbol to actual refresh_32x32.png.
-- Fixed engine detection for QS and QSS if placed inside a subdir.
-- Fixed episode detection for Q2 Steam, Q2 GOG and Q2Pro-NG.
-- Fixed empty difficulty selection and default difficulty.
-- Fixed demo detection for Quake 3.
-- Fixed resolution list and arguments for Quake 2.
-- Fixed resolutions for Q1/Q2 when a parent folder is selected.
+- Changed refresh symbol to actual refresh icon.
 - Renamed longer engine names like QuakeWorld Client.
 - Renamed clear resolution button tooltip.
 
-0.9.8:
+0.9.8
+-----
+New features:
 - Added support for Q2REPro (replacement of the Q2 rerelease engine).
 - Added a small checkbox for the parent folder warning message.
 - Added support for Quoth and Nehahra game mods.
 - Added tooltip for longer episode names.
 - Added map title to desktop shortcut.
 - Added spacing before game folder address.
-- Renamed bottom text message and warning when no engine detected.
-- Renamed bottom text message when no episode detected.
-- Renamed bottom text message when engine is ready.
-- Fixed Ironwail support from within a subdir.
+
+Bug fixes:
 - Fixed demo detection for Quake 2 GOG and Steam Edition(s).
 - Fixed demos for Quake II 64 and Vanilla Quake II.
 - Fixed demos for newer eps: Call of the Machine/Void.
 - Fixed demos for custom mods (except mods via progs.dat).
 - Fixed double demo filenames for official Quake eps.
+- Fixed Ironwail support from within a subdir.
+
+Improvements:
+- Renamed bottom text message and warning when no engine detected.
+- Renamed bottom text message when no episode detected.
+- Renamed bottom text message when engine is ready.
 - Capitalized map titles that have small letter.
 
-0.9.7:
+0.9.7
+-----
+New features:
 - Added two new buttons to refresh engine(s) and refresh episode(s).
 - Added a warning message if the main folder selected is a parent folder.
 - Added an error if no engine found and game is launched.
 - Added bottom message for clear buttons.
 - Command line args are now editable.
 - QS and QSS are running properly if placed inside a folder.
-- Code cleanup for Vanilla Quake and Quake 2.
-- Code cleanup for MainWindow.xaml.cs file.
+
+Bug fixes:
 - Fixed shared folder support if a main parent folder is selected.
 - Fixed episode and map detection for Q2Pro-NG.
 - Fixed wrong game path for Ciocolate Quake.
@@ -153,10 +202,17 @@ Changelog
 - Fixed tooltip display for longer demo names.
 - Fixed width for game address bar and browse button.
 - Renamed game(s) to episode(s) in bottom message.
-- Renamed no supported engine warning.
-- Renamed title for desktop shortcut message.
 
-0.9.6:
+Improvements:
+- Renamed no supported engine warning.
+- Renamed desktop shortcut message.
+
+Code cleanup:
+- Code cleanup for Vanilla Quake and Quake 2.
+- Code cleanup for MainWindow.xaml.cs file.
+
+0.9.6
+-----
 - Additional files created by their engines stay in the same folder.
 - Added a custom color for maps found inside pk3/zip archives.
 - Added support for Quake GOG and Steam Edition.
@@ -170,7 +226,8 @@ Changelog
 - Improved game folder if you copy/paste and enter.
 - Renamed ctf folder to Capture the Flag.
 
-0.9.5:
+0.9.5
+-----
 - Custom mods that have a progs.dat file are now read by the launcher.
 - Fixed support for Quake 2 - GOG Edition (including Quake 2 64).
 - Added support for Quake 2 - Call of the Void expansion.
@@ -178,7 +235,8 @@ Changelog
 - Added a small checkbox for the no map set warning.
 - Demo section unavailable if no demos found.
 
-0.9.4:
+0.9.4
+-----
 - Q1/Q2 engine identification overhaul and shared folder support.
 - Launcher gives a warning if game starts with no map set.
 - Clear buttons now become unavailable if they were used once.
@@ -187,7 +245,8 @@ Changelog
 - Fixed clear map values if launcher is restarted.
 - Clear map should also clear difficulty.
 
-0.9.3:
+0.9.3
+-----
 - Added a color for Easy difficulty (blue) since it was missing one.
 - Added a tooltip for demo names if too long.
 - Fixed duplicated demo names in drop-down list for Quake 2.
@@ -196,16 +255,19 @@ Changelog
 - Fixed drop-down lists if no valid engine is detected.
 - Renamed extra arguments tooltip.
 
-0.9.2:
+0.9.2
+-----
 - Fixed engine detection for Quake 2 GOG Edition.
 - Added demo support for Quake and Quake 2.
 - Code cleanup and folder restructuring.
 
-0.9.1:
+0.9.1
+-----
 - Improved PK3 file detection logic for Quake and Quake 2.
 - Close after launch setting will always be remembered.
 
-0.9:
+0.9
+---
 - Fixed a random crash if Quake folder was moved or deleted.
 - Fixed additional engine files not created in their engine folder.
 - Added PK3 file detection and optimized processing speed.
@@ -214,39 +276,46 @@ Changelog
 - Cleared saved settings display if there's no valid engine.
 - Improved buttons, icons and several border colors.
 
-0.8:
+0.8
+---
 - Massive code cleanup and renamed some classes and identifiers.
 - Launcher searches subdirs also instead of just main dir.
 - DM, CTF, Horde maps are displayed in purple.
 - Settings are now stored in a .json file.
 - Added an error message when no engine is found.
 
-0.7:
+0.7
+---
 - Added support for Quake 2 and its mission packs.
 - Added all the official episodes for Quake 2.
 - Fixed the way map titles are identified.
 
-0.6:
+0.6
+---
 - Added some additional engine source ports to the list.
 - Fixed some typos and improved launcher theme.
 
-0.5:
+0.5
+---
 - Added a second command line box to insert extra arguments.
 - Added a button to erase the manual/extra arguments.
 - Added a button to create desktop shortcuts.
 
-0.4:
+0.4
+---
 - Fixed the way maps or loose maps are read, now we have actual maps.
 - Fixed the way map titles work, now we have the actual title.
 - Added colors for difficulty settings.
 
-0.3:
+0.3
+---
 - Improved detection for custom folders and maps.
 - Improved launcher theme, buttons and fonts.
 - Added an icon to the Browse folder.
 - Added difficulty settings and map titles.
 
-0.2:
+0.2
+---
 - First public release with support for Quake and its mission packs.
 - Added support for Arcane Dimensions, Honey and Capture the Flag.
 - Added support for the latest episode: Dawn of the Machine.
