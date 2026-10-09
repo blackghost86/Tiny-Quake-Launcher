@@ -11,6 +11,7 @@ using TinyQuakeLauncher.Data;
 using TinyQuakeLauncher.Games;
 using TinyQuakeLauncher.Models;
 using TinyQuakeLauncher.Services;
+using TinyQuakeLauncher.Profiles;
 
 namespace TinyQuakeLauncher;
 
@@ -94,6 +95,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
     private bool commandArgumentsEdited;
     private string lastAcceptedQuakeFolder = "";
     private bool suppressNoEpisodeWarning;
+    private readonly Profiles.Profiles profiles = Profiles.Profiles.Load("TQLauncherTab2Profiles.json");
+    private bool loadingProfiles;
 
 
     public MainWindowMultiplayer()
@@ -153,9 +156,480 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         RefreshEnginesButtonMultiplayer.IsEnabled = false;
         RefreshEpisodesButtonMultiplayer.IsEnabled = false;
 
+        ProfileComboBoxMultiplayer.DisplayMemberPath =
+            nameof(LauncherProfile.Name);
+
+        ProfileComboBoxMultiplayer.SelectionChanged +=
+            ProfileComboBoxMultiplayer_SelectionChanged;
+
+        SaveProfileButtonMultiplayer.Click +=
+            SaveProfileButtonMultiplayer_Click;
+
+        DeleteProfileButtonMultiplayer.Click +=
+            DeleteProfileButtonMultiplayer_Click;
+
+        LoadProfiles();
+
         LoadSavedQuakeFolder();
 
         UpdateCommandArguments();
+    }
+
+    private void LoadProfiles()
+    {
+        loadingProfiles = true;
+
+        try
+        {
+            ProfileComboBoxMultiplayer.Items.Clear();
+
+            foreach (LauncherProfile profile in profiles.Items)
+            {
+                ProfileComboBoxMultiplayer.Items.Add(profile);
+            }
+
+            ProfileComboBoxMultiplayer.SelectedIndex = -1;
+        }
+        finally
+        {
+            loadingProfiles = false;
+        }
+    }
+
+    private void ProfileComboBoxMultiplayer_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        if (loadingProfiles ||
+            ProfileComboBoxMultiplayer.SelectedItem is not LauncherProfile profile)
+        {
+            return;
+        }
+
+        ApplyProfile(profile);
+    }
+
+    private void SaveProfileButtonMultiplayer_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        string? defaultName =
+            (ProfileComboBoxMultiplayer.SelectedItem as LauncherProfile)?.Name;
+
+        string? profileName =
+            PromptForProfileName(defaultName);
+
+        if (string.IsNullOrWhiteSpace(profileName))
+        {
+            return;
+        }
+
+        LauncherProfile profile =
+            CreateCurrentProfile(profileName.Trim());
+
+        profiles.AddOrReplace(profile);
+        profiles.Save("TQLauncherTab2Profiles.json");
+
+        LoadProfiles();
+
+        loadingProfiles = true;
+        try
+        {
+            ProfileComboBoxMultiplayer.SelectedItem =
+                ProfileComboBoxMultiplayer.Items
+                    .OfType<LauncherProfile>()
+                    .FirstOrDefault(
+                        item => string.Equals(
+                            item.Name,
+                            profile.Name,
+                            StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            loadingProfiles = false;
+        }
+
+        StatusTextMultiplayer.Text =
+            $"Saved profile {profile.Name}.";
+    }
+
+    private void DeleteProfileButtonMultiplayer_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (ProfileComboBoxMultiplayer.SelectedItem is not LauncherProfile profile)
+        {
+            return;
+        }
+
+        MessageBoxResult result =
+            System.Windows.MessageBox.Show(
+                $"Delete profile {profile.Name}?",
+                "Delete profile",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        profiles.Remove(profile.Name);
+        profiles.Save("TQLauncherTab2Profiles.json");
+
+        LoadProfiles();
+
+        StatusTextMultiplayer.Text =
+            $"Deleted profile {profile.Name}.";
+    }
+
+    private LauncherProfile CreateCurrentProfile(
+        string name)
+    {
+        Resolution? selectedResolution =
+            ResolutionComboBoxMultiplayer.SelectedItem as Resolution;
+
+        Engine? selectedEngine =
+            EngineComboBoxMultiplayer.SelectedItem as Engine;
+
+        MissionPack? selectedMissionPack =
+            MissionComboBoxMultiplayer.SelectedItem as MissionPack;
+
+        MapInfo? selectedMap =
+            MapComboBoxMultiplayer.SelectedItem as MapInfo;
+
+        MultiplayerMode? selectedMode =
+            ModeComboBoxMultiplayer.SelectedItem as MultiplayerMode;
+
+        bool modeCleared =
+            selectedMode == null ||
+            string.Equals(
+                selectedMode.Name,
+                "None",
+                StringComparison.Ordinal);
+
+        return new LauncherProfile
+        {
+            Name = name,
+            QuakeFolder =
+                QuakeFolderTextBoxMultiplayer.Text.Trim(),
+            EnginePath =
+                selectedEngine?.ExecutablePath ?? "",
+            EngineGame =
+                selectedEngine?.Game ?? QuakeGame.Quake1,
+            Resolution =
+                selectedResolution != null &&
+                !selectedResolution.IsDefault
+                    ? selectedResolution.DisplayName
+                    : "",
+            MissionPackDirectory =
+                selectedMissionPack?.GameDirectory ?? "",
+            MapFileName =
+                selectedMap?.FileName ?? "",
+            Mode =
+                modeCleared
+                    ? null
+                    : selectedMode!.Value,
+            ModeSelectionCleared = modeCleared,
+            FragLimitEnabled =
+                FragLimitCheckBoxMultiplayer.IsChecked == true,
+            FlagLimitEnabled =
+                FlagLimitCheckBoxMultiplayer.IsChecked == true,
+            TimeLimitEnabled =
+                TimeLimitCheckBoxMultiplayer.IsChecked == true,
+            MaxPlayersEnabled =
+                MaxPlayersCheckBoxMultiplayer.IsChecked == true,
+            ExtraArguments =
+                ExtraArgumentsTextBoxMultiplayer.Text
+        };
+    }
+
+    private void ApplyProfile(
+        LauncherProfile profile)
+    {
+        if (string.IsNullOrWhiteSpace(profile.QuakeFolder) ||
+            !Directory.Exists(profile.QuakeFolder))
+        {
+            System.Windows.MessageBox.Show(
+                "The game folder stored in this profile could not be found.",
+                "Load profile",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        loadingProfiles = true;
+        restoringSavedSelections = true;
+
+        try
+        {
+            QuakeFolderTextBoxMultiplayer.Text =
+                profile.QuakeFolder;
+
+            lastAcceptedQuakeFolder =
+                profile.QuakeFolder.Trim();
+
+            DetectQuakeInstallation(
+                profile.QuakeFolder);
+
+            Engine? engine =
+                EngineComboBoxMultiplayer.Items
+                    .OfType<Engine>()
+                    .FirstOrDefault(
+                        item =>
+                            string.Equals(
+                                item.ExecutablePath,
+                                profile.EnginePath,
+                                StringComparison.OrdinalIgnoreCase) &&
+                            item.Game == profile.EngineGame);
+
+            if (engine != null)
+            {
+                EngineComboBoxMultiplayer.SelectedItem =
+                    engine;
+            }
+
+            SetupResolutions();
+
+            if (!string.IsNullOrWhiteSpace(profile.Resolution))
+            {
+                Resolution? resolution =
+                    ResolutionComboBoxMultiplayer.Items
+                        .OfType<Resolution>()
+                        .FirstOrDefault(
+                            item => string.Equals(
+                                item.DisplayName,
+                                profile.Resolution,
+                                StringComparison.OrdinalIgnoreCase));
+
+                if (resolution != null)
+                {
+                    ResolutionComboBoxMultiplayer.SelectedItem =
+                        resolution;
+                }
+            }
+
+            DetectMissionPacks(
+                profile.QuakeFolder);
+
+            if (!string.IsNullOrWhiteSpace(
+                    profile.MissionPackDirectory))
+            {
+                MissionPack? missionPack =
+                    MissionComboBoxMultiplayer.Items
+                        .OfType<MissionPack>()
+                        .FirstOrDefault(
+                            item => string.Equals(
+                                item.GameDirectory,
+                                profile.MissionPackDirectory,
+                                StringComparison.OrdinalIgnoreCase));
+
+                if (missionPack != null)
+                {
+                    MissionComboBoxMultiplayer.SelectedItem =
+                        missionPack;
+                }
+            }
+
+            if (profile.MapFileName == "?" ||
+                string.IsNullOrWhiteSpace(profile.MapFileName))
+            {
+                MapComboBoxMultiplayer.SelectedIndex =
+                    profile.MapFileName == "?" ? 1 : 0;
+            }
+            else
+            {
+                MapInfo? map =
+                    MapComboBoxMultiplayer.Items
+                        .OfType<MapInfo>()
+                        .FirstOrDefault(
+                            item => string.Equals(
+                                item.FileName,
+                                profile.MapFileName,
+                                StringComparison.OrdinalIgnoreCase));
+
+                if (map != null)
+                {
+                    MapComboBoxMultiplayer.SelectedItem = map;
+                }
+            }
+
+            SetupModeOptions();
+
+            if (profile.ModeSelectionCleared ||
+                !profile.Mode.HasValue)
+            {
+                ModeComboBoxMultiplayer.SelectedIndex = 0;
+            }
+            else
+            {
+                MultiplayerMode? mode =
+                    ModeComboBoxMultiplayer.Items
+                        .OfType<MultiplayerMode>()
+                        .FirstOrDefault(
+                            item =>
+                                item.Value == profile.Mode.Value &&
+                                !string.Equals(
+                                    item.Name,
+                                    "None",
+                                    StringComparison.Ordinal));
+
+                ModeComboBoxMultiplayer.SelectedItem =
+                    mode ?? ModeComboBoxMultiplayer.SelectedItem;
+            }
+
+            FragLimitCheckBoxMultiplayer.IsChecked =
+                profile.FragLimitEnabled;
+
+            FlagLimitCheckBoxMultiplayer.IsChecked =
+                profile.FlagLimitEnabled;
+
+            TimeLimitCheckBoxMultiplayer.IsChecked =
+                profile.TimeLimitEnabled;
+
+            MaxPlayersCheckBoxMultiplayer.IsChecked =
+                profile.MaxPlayersEnabled;
+
+            ExtraArgumentsTextBoxMultiplayer.Text =
+                profile.ExtraArguments ?? "";
+
+            ClearMapButtonMultiplayer.IsEnabled =
+                MapComboBoxMultiplayer.SelectedIndex > 0;
+
+            ClearModeButtonMultiplayer.IsEnabled =
+                ModeComboBoxMultiplayer.SelectedIndex > 0;
+
+            ClearExtraArgumentsButtonMultiplayer.IsEnabled =
+                !string.IsNullOrWhiteSpace(
+                    ExtraArgumentsTextBoxMultiplayer.Text);
+
+            UpdateModeControlsState();
+            UpdateCommandArguments();
+
+            // Status text for loading a custom multiplayer profile.
+            StatusTextMultiplayer.Text =
+                $"Profile {profile.Name} loaded.";
+        }
+        finally
+        {
+            restoringSavedSelections = false;
+            loadingProfiles = false;
+        }
+    }
+
+    private static string? PromptForProfileName(
+        string? defaultName)
+    {
+        System.Windows.Window dialog =
+            new()
+            {
+                Title = "Save profile",
+                Width = 360,
+                Height = 160,
+                WindowStartupLocation =
+                    WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                ShowInTaskbar = false
+            };
+
+        System.Windows.Controls.StackPanel panel =
+            new()
+            {
+                Margin = new Thickness(12)
+            };
+
+        panel.Children.Add(
+            new System.Windows.Controls.TextBlock
+            {
+                Text = "Profile name:",
+                Margin = new Thickness(0, 0, 0, 6)
+            });
+
+        System.Windows.Controls.TextBox textBox =
+            new()
+            {
+                Text = defaultName ?? "",
+                Height = 26,
+                VerticalContentAlignment =
+                    VerticalAlignment.Center
+            };
+
+        panel.Children.Add(textBox);
+
+        System.Windows.Controls.StackPanel buttons =
+            new()
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment =
+                    System.Windows.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+        System.Windows.Controls.Button cancelButton =
+            new()
+            {
+                Content = "Cancel",
+                Width = 75,
+                Height = 26,
+                Margin = new Thickness(0, 0, 6, 0)
+            };
+
+        System.Windows.Controls.Button saveButton =
+            new()
+            {
+                Content = "Save",
+                Width = 75,
+                Height = 26,
+                IsDefault = true
+            };
+
+        cancelButton.Click +=
+            (_, _) =>
+            {
+                dialog.DialogResult = false;
+                dialog.Close();
+            };
+
+        saveButton.Click +=
+            (_, _) =>
+            {
+                if (string.IsNullOrWhiteSpace(textBox.Text))
+                {
+                    System.Windows.MessageBox.Show(
+                        dialog,
+                        "Enter a profile name.",
+                        "Save profile",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                dialog.DialogResult = true;
+                dialog.Close();
+            };
+
+        buttons.Children.Add(cancelButton);
+        buttons.Children.Add(saveButton);
+
+        panel.Children.Add(buttons);
+        dialog.Content = panel;
+
+        dialog.Owner =
+            System.Windows.Application.Current?
+                .Windows
+                .OfType<System.Windows.Window>()
+                .FirstOrDefault(
+                    window => window.IsActive);
+
+        textBox.SelectAll();
+        textBox.Focus();
+
+        bool? result =
+            dialog.ShowDialog();
+
+        return result == true
+            ? textBox.Text.Trim()
+            : null;
     }
 
     private void LoadSavedQuakeFolder()
@@ -303,6 +777,11 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
     private void SaveCurrentSettings()
     {
+        if (loadingProfiles)
+        {
+            return;
+        }
+
         try
         {
             MultiplayerLauncherSettings settings =
@@ -346,7 +825,11 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 string.IsNullOrWhiteSpace(selectedMap.FileName);
 
             if (ModeComboBoxMultiplayer.SelectedItem
-                is MultiplayerMode mode && mode.Value != 0)
+                is MultiplayerMode mode &&
+                !string.Equals(
+                    mode.Name,
+                    "None",
+                    StringComparison.Ordinal))
             {
                 settings.Mode =
                     mode.Value;
@@ -488,8 +971,14 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 ModeComboBoxMultiplayer.Items
                     .OfType<MultiplayerMode>()
                     .FirstOrDefault(
-                        item => item.Value ==
-                            settings.Mode.Value);
+                        item =>
+                            item.Value == settings.Mode.Value &&
+                            (EngineComboBoxMultiplayer.SelectedItem is not Engine engine ||
+                             engine.Game != QuakeGame.Quake3 ||
+                             !string.Equals(
+                                 item.Name,
+                                 "None",
+                                 StringComparison.Ordinal)));
 
             if (mode != null)
             {
@@ -841,8 +1330,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
     }
 
     private void NumericLimitTextBox_PreviewTextInput(
-object sender,
-System.Windows.Input.TextCompositionEventArgs e)
+        object sender,
+        System.Windows.Input.TextCompositionEventArgs e)
     {
         e.Handled =
             !e.Text.All(char.IsDigit);
@@ -1922,7 +2411,7 @@ System.Windows.Input.TextCompositionEventArgs e)
             maps =
                 MapDetector3.DetectMaps(gameFolder);
         }
-        // Quake 1 map detector.
+        // Quake map detector.
         else
         {
             maps =
@@ -1946,7 +2435,7 @@ System.Windows.Input.TextCompositionEventArgs e)
                 .ToList();
         }
 
-        // Multiplayer only: show maps containing dm, ctf, tourney or team.
+        // Show maps containing dm, ctf, tourney or team.
         maps = maps
             .Where(
                 map =>
@@ -2056,7 +2545,9 @@ System.Windows.Input.TextCompositionEventArgs e)
 
         bool modeAvailable =
             selectedEngine != null &&
-            selectedEngine.Game == QuakeGame.Quake1;
+            (selectedEngine.Game == QuakeGame.Quake1 ||
+             selectedEngine.Game == QuakeGame.Quake2 ||
+             selectedEngine.Game == QuakeGame.Quake3);
 
         ModeComboBoxMultiplayer.IsEnabled =
             modeAvailable;
@@ -2541,7 +3032,9 @@ System.Windows.Input.TextCompositionEventArgs e)
             EngineComboBoxMultiplayer.SelectedItem as Engine;
 
         if (engine == null ||
-            engine.Game != QuakeGame.Quake1)
+            (engine.Game != QuakeGame.Quake1 &&
+             engine.Game != QuakeGame.Quake2 &&
+             engine.Game != QuakeGame.Quake3))
         {
             ModeComboBoxMultiplayer.SelectedIndex = -1;
             UpdateModeControlsState();
@@ -2556,34 +3049,100 @@ System.Windows.Input.TextCompositionEventArgs e)
                 Foreground = HexBrush("#000000")
             });
 
-        ModeComboBoxMultiplayer.Items.Add(
-            new MultiplayerMode
-            {
-                Name = "Standard Mode",
-                Value = 1,
-                Foreground = HexBrush("#000000")
-            });
+        // Quake 3 modes.
+        if (engine.Game == QuakeGame.Quake3)
+        {
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Classic Deathmatch",
+                    Value = 0,
+                    Foreground = HexBrush("#000000")
+                });
 
-        ModeComboBoxMultiplayer.Items.Add(
-            new MultiplayerMode
-            {
-                Name = "Weapons Stay",
-                Value = 2,
-                Foreground = HexBrush("#000000")
-            });
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Tournament",
+                    Value = 1,
+                    Foreground = HexBrush("#000000")
+                });
 
-        ModeComboBoxMultiplayer.Items.Add(
-            new MultiplayerMode
-            {
-                Name = "Combined",
-                Value = 3,
-                Foreground = HexBrush("#000000")
-            });
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Team Deathmatch",
+                    Value = 3,
+                    Foreground = HexBrush("#000000")
+                });
+
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Capture the Flag",
+                    Value = 4,
+                    Foreground = HexBrush("#000000")
+                });
+        }
+
+        // Quake and Quake 2 modes.
+        else if (engine.Game == QuakeGame.Quake2)
+        {
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Standard Mode",
+                    Value = 1,
+                    Foreground = HexBrush("#000000")
+                });
+
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Weapons Stay",
+                    Value = 2,
+                    Foreground = HexBrush("#000000")
+                });
+
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Combined",
+                    Value = 3,
+                    Foreground = HexBrush("#000000")
+                });
+        }
+
+        else
+        {
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Standard Mode",
+                    Value = 1,
+                    Foreground = HexBrush("#000000")
+                });
+
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Weapons Stay",
+                    Value = 2,
+                    Foreground = HexBrush("#000000")
+                });
+
+            ModeComboBoxMultiplayer.Items.Add(
+                new MultiplayerMode
+                {
+                    Name = "Combined",
+                    Value = 3,
+                    Foreground = HexBrush("#000000")
+                });
+        }
 
         ModeComboBoxMultiplayer.SelectedIndex = 1;
         UpdateModeControlsState();
     }
-
 
     private void Multiplayer_ModeComboBox_SelectionChanged(
         object sender,
@@ -2688,6 +3247,22 @@ System.Windows.Input.TextCompositionEventArgs e)
         {
             System.Windows.MessageBox.Show(
                 "Please select an episode first.",
+                "Warning",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+
+            return;
+        }
+
+        if (selectedMap == null ||
+            string.IsNullOrWhiteSpace(selectedMap.FileName) ||
+            string.Equals(
+                selectedMap.FileName,
+                "?",
+                StringComparison.Ordinal))
+        {
+            System.Windows.MessageBox.Show(
+                "Please select a valid map.",
                 "Warning",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -2840,7 +3415,7 @@ System.Windows.Input.TextCompositionEventArgs e)
         if (FlagLimitCheckBoxMultiplayer.IsChecked == true)
         {
             arguments.Add("+flaglimit");
-            arguments.Add("0");
+            arguments.Add("10");
         }
 
         if (TimeLimitCheckBoxMultiplayer.IsChecked == true)
@@ -2926,13 +3501,6 @@ System.Windows.Input.TextCompositionEventArgs e)
         arguments.AddRange(
             BuildResolutionArguments());
 
-        if (ModeComboBoxMultiplayer.SelectedItem
-            is MultiplayerMode mode && mode.Value != 0)
-        {
-            arguments.Add("+deathmatch");
-            arguments.Add(mode.Value.ToString());
-        }
-
         if (missionPack != null &&
             !string.IsNullOrWhiteSpace(
                 missionPack.GameDirectory))
@@ -2973,6 +3541,13 @@ System.Windows.Input.TextCompositionEventArgs e)
                 StringComparison.Ordinal))
         {
             mapName = "?";
+        }
+
+        if (ModeComboBoxMultiplayer.SelectedItem
+            is MultiplayerMode mode && mode.Value != 0)
+        {
+            arguments.Add("+deathmatch");
+            arguments.Add(mode.Value.ToString());
         }
 
         if (!string.IsNullOrWhiteSpace(mapName))
@@ -3056,6 +3631,13 @@ System.Windows.Input.TextCompositionEventArgs e)
             mapName = "?";
         }
 
+        if (ModeComboBoxMultiplayer.SelectedItem is MultiplayerMode mode &&
+            mode.Name != "None")
+        {
+            arguments.Add("+deathmatch");
+            arguments.Add(mode.Value.ToString());
+        }
+
         if (!string.IsNullOrWhiteSpace(mapName))
         {
             arguments.Add("+map");
@@ -3117,11 +3699,19 @@ System.Windows.Input.TextCompositionEventArgs e)
             mapName = "?";
         }
 
+        if (ModeComboBoxMultiplayer.SelectedItem
+            is MultiplayerMode mode &&
+            mode.Name != "None")
+        {
+            arguments.Add("+set");
+            arguments.Add("g_gametype");
+            arguments.Add(mode.Value.ToString());
+        }
+
         if (!string.IsNullOrWhiteSpace(mapName))
         {
             arguments.Add("+map");
             arguments.Add(mapName);
-
         }
 
         return arguments;
@@ -3208,7 +3798,7 @@ System.Windows.Input.TextCompositionEventArgs e)
             nextArgumentIsLimitValue = isLimitSwitch;
         }
 
-        // Manual extra arguments are blue.
+        // Manual extra arguments are always blue.
         bool hasExistingArguments =
             automaticArguments.Count > 0;
 
@@ -3615,7 +4205,7 @@ System.Windows.Input.TextCompositionEventArgs e)
                 BuildLaunchArguments();
 
             // Resolve the Random map only for the actual launch. Keep the command
-            // preview as "+map ?" and pass a detected map to the engine.
+            // preview as "+map ?" and pass an actual detected map to the engine.
             if (MapComboBoxMultiplayer.SelectedItem is MapInfo randomMapSelection &&
                 string.Equals(
                     randomMapSelection.FileName,

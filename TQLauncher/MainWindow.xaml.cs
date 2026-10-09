@@ -11,6 +11,8 @@ using TinyQuakeLauncher.Data;
 using TinyQuakeLauncher.Games;
 using TinyQuakeLauncher.Models;
 using TinyQuakeLauncher.Services;
+using LauncherProfiles = TinyQuakeLauncher.Profiles.Profiles;
+using TinyQuakeLauncher.Profiles;
 
 namespace TinyQuakeLauncher;
 
@@ -131,10 +133,26 @@ public partial class MainWindow : Window
     private bool commandArgumentsEdited;
     private string lastAcceptedQuakeFolder = "";
     private bool suppressNoEpisodeWarning;
+    private readonly LauncherProfiles profiles = LauncherProfiles.Load("TQLauncherTab1Profiles.json");
+    private bool loadingProfiles;
 
     public MainWindow()
     {
         InitializeComponent();
+
+        ProfileComboBox.DisplayMemberPath =
+            nameof(LauncherProfile.Name);
+
+        ProfileComboBox.SelectionChanged +=
+            ProfileComboBox_SelectionChanged;
+
+        SaveProfileButton.Click +=
+            SaveProfileButton_Click;
+
+        DeleteProfileButton.Click +=
+            DeleteProfileButton_Click;
+
+        LoadProfiles();
 
         FrameworkElementFactory mapText =
             new FrameworkElementFactory(typeof(TextBlock));
@@ -144,6 +162,7 @@ public partial class MainWindow : Window
             {
                 Converter = new MapInfoDisplayConverter()
             });
+
         mapText.SetBinding(
             TextBlock.ForegroundProperty,
             new System.Windows.Data.Binding(nameof(MapInfo.Foreground)));
@@ -577,6 +596,451 @@ public partial class MainWindow : Window
             settings.ExtraArguments ?? "";
 
         UpdateCommandArguments();
+    }
+
+    private void LoadProfiles()
+    {
+        loadingProfiles = true;
+
+        try
+        {
+            ProfileComboBox.Items.Clear();
+
+            foreach (LauncherProfile profile in profiles.Items)
+            {
+                ProfileComboBox.Items.Add(profile);
+            }
+        }
+        finally
+        {
+            loadingProfiles = false;
+        }
+    }
+
+    private void ProfileComboBox_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        if (loadingProfiles)
+        {
+            return;
+        }
+
+        if (ProfileComboBox.SelectedItem is LauncherProfile profile)
+        {
+            ApplyProfile(profile);
+        }
+    }
+
+    private void SaveProfileButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        string? defaultName =
+            (ProfileComboBox.SelectedItem as LauncherProfile)?.Name;
+
+        string? profileName =
+            PromptForProfileName(defaultName);
+
+        if (string.IsNullOrWhiteSpace(profileName))
+        {
+            return;
+        }
+
+        LauncherProfile profile =
+            CreateCurrentProfile(profileName.Trim());
+
+        LauncherProfile? existing =
+            profiles.Find(profile.Name);
+
+        if (existing != null)
+        {
+            MessageBoxResult result =
+                System.Windows.MessageBox.Show(
+                    $"A profile named {profile.Name} already exists. Do you want to replace it?",
+                    "Save profile",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+        }
+
+        profiles.AddOrReplace(profile);
+        profiles.Save("TQLauncherTab1Profiles.json");
+
+        LoadProfiles();
+
+        ProfileComboBox.SelectedItem =
+            ProfileComboBox.Items
+                .OfType<LauncherProfile>()
+                .FirstOrDefault(
+                    item => string.Equals(
+                        item.Name,
+                        profile.Name,
+                        StringComparison.OrdinalIgnoreCase));
+
+        StatusText.Text =
+            $"Profile {profile.Name} saved.";
+    }
+
+    private void DeleteProfileButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (ProfileComboBox.SelectedItem is not LauncherProfile profile)
+        {
+            return;
+        }
+
+        MessageBoxResult result =
+            System.Windows.MessageBox.Show(
+                $"Delete profile {profile.Name}?",
+                "Delete profile",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        if (profiles.Remove(profile.Name))
+        {
+            profiles.Save("TQLauncherTab1Profiles.json");
+            LoadProfiles();
+            ProfileComboBox.SelectedIndex = -1;
+
+            StatusText.Text =
+                $"Profile {profile.Name} deleted.";
+        }
+    }
+
+    private LauncherProfile CreateCurrentProfile(
+        string name)
+    {
+        Resolution? selectedResolution =
+            ResolutionComboBox.SelectedItem as Resolution;
+
+        Engine? selectedEngine =
+            EngineComboBox.SelectedItem as Engine;
+
+        MissionPack? selectedMissionPack =
+            MissionComboBox.SelectedItem as MissionPack;
+
+        MapInfo? selectedMap =
+            MapComboBox.SelectedItem as MapInfo;
+
+        Difficulty? selectedDifficulty =
+            DifficultyComboBox.SelectedItem as Difficulty;
+
+        return new LauncherProfile
+        {
+            Name = name,
+            QuakeFolder = QuakeFolderTextBox.Text.Trim(),
+            EnginePath = selectedEngine?.ExecutablePath ?? "",
+            EngineGame = selectedEngine?.Game ?? QuakeGame.Quake1,
+            Resolution =
+                selectedResolution != null &&
+                !selectedResolution.IsDefault
+                    ? selectedResolution.DisplayName
+                    : "",
+            MissionPackDirectory =
+                selectedMissionPack?.GameDirectory ?? "",
+            MapFileName =
+                selectedMap?.FileName ?? "",
+            Difficulty =
+                selectedDifficulty != null &&
+                selectedDifficulty != Difficulty.None
+                    ? selectedDifficulty.Value
+                    : null,
+            Mode = null,
+            ModeSelectionCleared = false,
+            FragLimitEnabled = false,
+            FlagLimitEnabled = false,
+            TimeLimitEnabled = false,
+            MaxPlayersEnabled = false,
+            ExtraArguments = ExtraArgumentsTextBox.Text
+        };
+    }
+
+    private void ApplyProfile(
+        LauncherProfile profile)
+    {
+        if (string.IsNullOrWhiteSpace(profile.QuakeFolder))
+        {
+            System.Windows.MessageBox.Show(
+                "The selected profile does not contain a game folder.",
+                "Load profile",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!Directory.Exists(profile.QuakeFolder))
+        {
+            System.Windows.MessageBox.Show(
+                "The game folder stored in this profile was moved or deleted.",
+                "Load profile",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        loadingProfiles = true;
+        restoringSavedSelections = true;
+
+        try
+        {
+            string quakeFolder =
+                profile.QuakeFolder.Trim();
+
+            QuakeFolderTextBox.Text =
+                quakeFolder;
+
+            lastAcceptedQuakeFolder =
+                quakeFolder;
+
+            restoreMapSelectionCleared = false;
+            restoreDifficultySelectionCleared = false;
+
+            DetectQuakeInstallation(quakeFolder);
+
+            Engine? engine =
+                EngineComboBox.Items
+                    .OfType<Engine>()
+                    .FirstOrDefault(
+                        item =>
+                            string.Equals(
+                                item.ExecutablePath,
+                                profile.EnginePath,
+                                StringComparison.OrdinalIgnoreCase) &&
+                            item.Game == profile.EngineGame);
+
+            if (engine != null)
+            {
+                EngineComboBox.SelectedItem = engine;
+                SetupResolutions();
+            }
+
+            DetectMissionPacks(quakeFolder);
+
+            MissionPack? missionPack =
+                MissionComboBox.Items
+                    .OfType<MissionPack>()
+                    .FirstOrDefault(
+                        item =>
+                            string.Equals(
+                                item.GameDirectory,
+                                profile.MissionPackDirectory,
+                                StringComparison.OrdinalIgnoreCase));
+
+            if (missionPack != null)
+            {
+                MissionComboBox.SelectedItem = missionPack;
+            }
+
+            Resolution? resolution =
+                ResolutionComboBox.Items
+                    .OfType<Resolution>()
+                    .FirstOrDefault(
+                        item =>
+                            !item.IsDefault &&
+                            string.Equals(
+                                item.DisplayName,
+                                profile.Resolution,
+                                StringComparison.OrdinalIgnoreCase));
+
+            ResolutionComboBox.SelectedItem =
+                resolution ?? ResolutionComboBox.Items
+                    .OfType<Resolution>()
+                    .FirstOrDefault(item => item.IsDefault);
+
+            if (string.IsNullOrWhiteSpace(profile.MapFileName))
+            {
+                MapComboBox.SelectedIndex = 0;
+            }
+            else if (string.Equals(
+                profile.MapFileName,
+                "?",
+                StringComparison.Ordinal))
+            {
+                MapComboBox.SelectedIndex = 1;
+            }
+            else
+            {
+                MapInfo? map =
+                    MapComboBox.Items
+                        .OfType<MapInfo>()
+                        .FirstOrDefault(
+                            item =>
+                                string.Equals(
+                                    item.FileName,
+                                    profile.MapFileName,
+                                    StringComparison.OrdinalIgnoreCase));
+
+                if (map != null)
+                {
+                    MapComboBox.SelectedItem = map;
+                }
+            }
+
+            if (profile.Difficulty.HasValue)
+            {
+                Difficulty? difficulty =
+                    DifficultyComboBox.Items
+                        .OfType<Difficulty>()
+                        .FirstOrDefault(
+                            item =>
+                                item.Value ==
+                                profile.Difficulty.Value);
+
+                DifficultyComboBox.SelectedItem =
+                    difficulty ??
+                    DifficultyComboBox.Items
+                        .OfType<Difficulty>()
+                        .FirstOrDefault(
+                            item => item == Difficulty.None);
+            }
+            else
+            {
+                DifficultyComboBox.SelectedIndex = 0;
+            }
+
+            ExtraArgumentsTextBox.Text =
+                profile.ExtraArguments ?? "";
+
+            ClearResolutionButton.IsEnabled =
+                ResolutionComboBox.SelectedItem is Resolution selectedResolution &&
+                !selectedResolution.IsDefault;
+
+            ClearMapButton.IsEnabled =
+                !demoSelectionActive &&
+                MapComboBox.SelectedIndex > 0;
+
+            UpdateDifficultyControlsState();
+            UpdateCommandArguments();
+
+            // Status text for loading a custom singleplayer profile.
+            StatusText.Text =
+                $"Profile {profile.Name} loaded.";
+        }
+        finally
+        {
+            restoringSavedSelections = false;
+            loadingProfiles = false;
+        }
+    }
+
+    private static string? PromptForProfileName(
+        string? defaultName)
+    {
+        System.Windows.Window dialog =
+            new()
+            {
+                Title = "Save profile",
+                Width = 360,
+                Height = 150,
+                WindowStartupLocation =
+                    WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                ShowInTaskbar = false
+            };
+
+        System.Windows.Controls.StackPanel panel =
+            new()
+            {
+                Margin = new Thickness(12)
+            };
+
+        panel.Children.Add(
+            new System.Windows.Controls.TextBlock
+            {
+                Text = "Profile name:",
+                Margin = new Thickness(0, 0, 0, 6)
+            });
+
+        System.Windows.Controls.TextBox textBox =
+            new()
+            {
+                Text = defaultName ?? "",
+                Height = 26,
+                VerticalContentAlignment =
+                    VerticalAlignment.Center
+            };
+
+        panel.Children.Add(textBox);
+
+        System.Windows.Controls.StackPanel buttons =
+            new()
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+        System.Windows.Controls.Button cancelButton =
+            new()
+            {
+                Content = "Cancel",
+                Width = 75,
+                Height = 26,
+                Margin = new Thickness(0, 0, 6, 0)
+            };
+
+        System.Windows.Controls.Button saveButton =
+            new()
+            {
+                Content = "Save",
+                Width = 75,
+                Height = 26,
+                IsDefault = true
+            };
+
+        cancelButton.Click +=
+            (_, _) =>
+            {
+                dialog.DialogResult = false;
+                dialog.Close();
+            };
+
+        saveButton.Click +=
+            (_, _) =>
+            {
+                if (string.IsNullOrWhiteSpace(textBox.Text))
+                {
+                    System.Windows.MessageBox.Show(
+                        dialog,
+                        "Enter a profile name.",
+                        "Save profile",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
+                dialog.DialogResult = true;
+                dialog.Close();
+            };
+
+        buttons.Children.Add(cancelButton);
+        buttons.Children.Add(saveButton);
+        panel.Children.Add(buttons);
+
+        dialog.Content = panel;
+        dialog.Owner =
+            System.Windows.Application.Current?.Windows
+                .OfType<System.Windows.Window>()
+                .FirstOrDefault(window =>
+                    window is MainWindow);
+
+        textBox.Focus();
+        textBox.SelectAll();
+
+        return dialog.ShowDialog() == true
+            ? textBox.Text.Trim()
+            : null;
     }
 
     private void MainWindow_Closing(
@@ -1748,7 +2212,7 @@ public partial class MainWindow : Window
             MissionComboBox.SelectedIndex = 0;
 
             // An episode was detected, so restore the normal difficulty
-            // options and use Normal as the default.
+            // options and use Normal difficulty as the default.
             if (DifficultyComboBox.Items.Count > 3)
             {
                 DifficultyComboBox.SelectedIndex = 3;
@@ -1978,7 +2442,7 @@ public partial class MainWindow : Window
             maps =
                 MapDetector3.DetectMaps(gameFolder);
         }
-        // Quake 1 map detector.
+        // Quake map detector.
         else
         {
             maps =
@@ -2101,7 +2565,7 @@ public partial class MainWindow : Window
     private void UpdateDifficultyControlsState()
     {
         // Quake 3 difficulty and demo selection disable the difficulty
-        // selector. When an engine is present but no episode is detected,
+        // selector. When an engine is present but no episode detected,
         // keep the difficulty selector available but empty.
         bool noEpisodes =
             MissionComboBox.Items.Count == 0;
@@ -2110,7 +2574,8 @@ public partial class MainWindow : Window
             IsQuake3Game() ||
             demoSelectionActive;
 
-        if (disabled && DifficultyComboBox.SelectedIndex != 0)
+        if (IsQuake3Game() &&
+            DifficultyComboBox.SelectedIndex != 0)
         {
             DifficultyComboBox.SelectedIndex = 0;
         }
@@ -2802,6 +3267,8 @@ public partial class MainWindow : Window
             !demoSelectionActive &&
             MapComboBox.SelectedIndex > 0;
 
+        UpdateMapSelectionVisual();
+
         UpdateCommandArguments();
     }
 
@@ -2892,6 +3359,8 @@ public partial class MainWindow : Window
                 ? System.Windows.Media.Brushes.DarkGray
                 : System.Windows.SystemColors.ControlTextBrush;
 
+        UpdateMapSelectionVisual();
+
         UpdateDifficultyControlsState();
 
         if (!restoringSavedSelections &&
@@ -2902,6 +3371,62 @@ public partial class MainWindow : Window
 
         UpdateDemoToolTip();
         UpdateCommandArguments();
+    }
+
+    private void UpdateMapSelectionVisual()
+    {
+        MapComboBox.ApplyTemplate();
+
+        ContentPresenter? contentPresenter =
+            FindVisualChild<ContentPresenter>(MapComboBox);
+
+        if (contentPresenter == null)
+        {
+            return;
+        }
+
+        TextBlock? textBlock =
+            FindVisualChild<TextBlock>(contentPresenter);
+
+        if (textBlock == null)
+        {
+            return;
+        }
+
+        textBlock.Foreground =
+            MapComboBox.IsEnabled
+                ? (MapComboBox.SelectedItem is MapInfo selectedMap
+                    ? selectedMap.Foreground
+                    : System.Windows.SystemColors.ControlTextBrush)
+                : System.Windows.Media.Brushes.DarkGray;
+    }
+
+    private static T? FindVisualChild<T>(
+        DependencyObject parent)
+        where T : DependencyObject
+    {
+        for (int i = 0;
+             i < VisualTreeHelper.GetChildrenCount(parent);
+             i++)
+        {
+            DependencyObject child =
+                VisualTreeHelper.GetChild(parent, i);
+
+            if (child is T match)
+            {
+                return match;
+            }
+
+            T? descendant =
+                FindVisualChild<T>(child);
+
+            if (descendant != null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 
     private void CloseAfterLaunchCheckBox_Click(
@@ -3029,6 +3554,22 @@ public partial class MainWindow : Window
         {
             System.Windows.MessageBox.Show(
                 "Please select an episode first.",
+                "Warning",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+
+            return;
+        }
+
+        if (selectedMap == null ||
+            string.IsNullOrWhiteSpace(selectedMap.FileName) ||
+            string.Equals(
+                selectedMap.FileName,
+                "?",
+                StringComparison.Ordinal))
+        {
+            System.Windows.MessageBox.Show(
+                "Please select a valid map.",
                 "Warning",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -3775,7 +4316,7 @@ public partial class MainWindow : Window
                 });
         }
 
-        // Only manual extra arguments are blue.
+        // Only manual extra arguments are always blue.
         bool hasExistingArguments =
             automaticArguments.Count > 0;
 
@@ -3941,7 +4482,7 @@ public partial class MainWindow : Window
         content.Children.Add(checkBox);
         content.Children.Add(buttons);
 
-        Window dialog =
+        System.Windows.Window dialog =
             new Window
             {
                 Title = "Warning",
@@ -4037,7 +4578,7 @@ public partial class MainWindow : Window
         content.Children.Add(checkBox);
         content.Children.Add(buttons);
 
-        Window dialog =
+        System.Windows.Window dialog =
             new Window
             {
                 Title = "Warning",
@@ -4221,8 +4762,8 @@ public partial class MainWindow : Window
                 }
             }
 
-            // Keep "+map ?" in the preview, but resolve Random to a real
-            // detected map immediately before starting the engine.
+            // Resolve the Random map only for the actual launch. Keep the command
+            // preview as "+map ?" and pass an actual detected map to the engine.
             if (selectedDemo == null &&
                 IsRandomMapSelected(selectedMap))
             {

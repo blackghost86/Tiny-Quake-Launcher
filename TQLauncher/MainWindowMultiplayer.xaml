@@ -15,12 +15,56 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Quake folder -->
+        <!-- Profile -->
         <Grid Grid.Row="0" Margin="0,15,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                Grid.Column="0"
+                Text="Profile:"
+                VerticalAlignment="Center"/>
+
+            <ComboBox
+                x:Name="ProfileComboBoxMultiplayer"
+                Grid.Column="1"
+                Height="26"
+                Margin="0,0,6,0"
+                Background="#F2F2F2"/>
+
+            <Button
+                x:Name="SaveProfileButtonMultiplayer"
+                Grid.Column="2"
+                Width="38"
+                Height="26"
+                Margin="0,0,6,0"
+                Content="💾"
+                FontSize="14"
+                BorderBrush="#999999"
+                ToolTip="Save current settings as a profile"/>
+
+            <Button
+                x:Name="DeleteProfileButtonMultiplayer"
+                Grid.Column="3"
+                Width="38"
+                Height="26"
+                Content="✖"
+                FontSize="15"
+                BorderBrush="#999999"
+                ToolTip="Delete selected profile"/>
+        </Grid>
+
+        <!-- Quake folder -->
+        <Grid Grid.Row="1" Margin="0,5,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -50,7 +94,7 @@
         </Grid>
 
         <!-- Resolution -->
-        <Grid Grid.Row="1" Margin="0,0,0,15">
+        <Grid Grid.Row="2" Margin="0,0,0,15">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -83,7 +127,7 @@
         </Grid>
 
         <!-- Engine -->
-        <Grid Grid.Row="2" Margin="0,0,0,8">
+        <Grid Grid.Row="3" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -159,7 +203,7 @@
         </Grid>
 
         <!-- Episode -->
-        <Grid Grid.Row="3" Margin="0,0,0,8">
+        <Grid Grid.Row="4" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -235,7 +279,7 @@
         </Grid>
 
         <!-- Map -->
-        <Grid Grid.Row="4" Margin="0,0,0,8">
+        <Grid Grid.Row="5" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -288,7 +332,7 @@
         </Grid>
 
         <!-- Mode -->
-        <Grid Grid.Row="5" Margin="0,0,0,8">
+        <Grid Grid.Row="6" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -343,7 +387,7 @@
 
         <!-- Multiplayer settings -->
         <StackPanel
-            Grid.Row="6"
+            Grid.Row="7"
             Orientation="Horizontal"
             HorizontalAlignment="Left"
             Margin="0,5,0,10">
@@ -414,7 +458,7 @@
         </StackPanel>
 
         <!-- Command arguments -->
-        <Grid Grid.Row="7" Margin="0,10,0,10">
+        <Grid Grid.Row="8" Margin="0,10,0,10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -435,7 +479,7 @@
         </Grid>
 
         <!-- Extra arguments -->
-        <Grid Grid.Row="8" Margin="0,0,0,15">
+        <Grid Grid.Row="9" Margin="0,0,0,15">
 
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -454,22 +498,22 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-        <!-- Manual extra arguments -->
-        <TextBox
-            x:Name="ExtraArgumentsTextBoxMultiplayer"
-            Grid.Column="0"
-            Height="60"
-            TextWrapping="Wrap"
-            VerticalScrollBarVisibility="Auto"
-            VerticalContentAlignment="Top"
-            Padding="8"
-            Margin="0,0,6,0"
-            Background="#FFFFFF"
-            BorderBrush="#999999"
-            ToolTip="Manual arguments added to the general command line"
-            TextChanged="Multiplayer_ExtraArgumentsTextBox_TextChanged"/>
+                <!-- Manual extra arguments -->
+                <TextBox
+                    x:Name="ExtraArgumentsTextBoxMultiplayer"
+                    Grid.Column="0"
+                    Height="58"
+                    TextWrapping="Wrap"
+                    VerticalScrollBarVisibility="Auto"
+                    VerticalContentAlignment="Top"
+                    Padding="8"
+                    Margin="0,0,6,0"
+                    Background="#FFFFFF"
+                    BorderBrush="#999999"
+                    ToolTip="Manual arguments added to the general command line"
+                    TextChanged="Multiplayer_ExtraArgumentsTextBox_TextChanged"/>
 
-            <!-- Action buttons -->
+                <!-- Action buttons -->
                 <StackPanel
                     Grid.Column="1"
                     Orientation="Vertical">
@@ -479,7 +523,7 @@
                         x:Name="ClearExtraArgumentsButtonMultiplayer"
                         Width="38"
                         Height="26"
-                        Margin="0,0,0,8"
+                        Margin="0,0,0,6"
                         Content="✖"
                         FontSize="15"
                         BorderBrush="#999999"
@@ -523,7 +567,7 @@
 
         <!-- Launch -->
         <Grid
-            Grid.Row="9"
+            Grid.Row="10"
             Margin="0,10,0,10">
 
             <Grid.RowDefinitions>
@@ -554,7 +598,7 @@
         </Grid>
 
         <!-- Bottom status bar -->
-        <Grid Grid.Row="10">
+        <Grid Grid.Row="11">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -566,7 +610,7 @@
                 VerticalAlignment="Center"/>
             <TextBlock
                 Grid.Column="1"
-                Text="v1.1"
+                Text="v1.2"
                 Foreground="#B0B0B0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"/>
