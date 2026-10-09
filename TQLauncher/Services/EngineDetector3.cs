@@ -62,6 +62,18 @@ public class EngineDetector3
                 "Quake III (Steam/GOG)",
                 executablePath),
 
+            "spearmint_x86.exe" => CreateEngine(
+                "Spearmint (x86)",
+                executablePath),
+
+            "spearmint_x86_64.exe" => CreateEngine(
+                "Spearmint (x64)",
+                executablePath),
+
+            "vkquake3.x86_64.exe" => CreateEngine(
+                "vkQuake3",
+                executablePath),
+
             "fteqw.exe" => CreateEngine(
                 "FTEQW",
                 executablePath),

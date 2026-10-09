@@ -80,6 +80,10 @@ public class EngineDetector2
                 "Vanilla Quake II",
                 executablePath),
 
+            "vkquake2.exe" => CreateEngine(
+                "vkQuake2",
+                 executablePath),
+
             // This engine supports both games.
             "fteqw.exe" => CreateEngine(
                 "FTEQW",

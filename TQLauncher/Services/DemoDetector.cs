@@ -29,7 +29,6 @@ public class DemoDetector
 
     private const int GameCoop = 0;
     private const int GameDeathmatch = 1;
-
     private const int SvcPrint = 8;
     private const int SvcStuffText = 9;
     private const int SvcServerInfo = 11;
@@ -259,7 +258,6 @@ public class DemoDetector
                     leaveOpen: false);
 
             // PAK header:
-            //
             // char[4] "PACK"
             // int32 directory offset
             // int32 directory length
