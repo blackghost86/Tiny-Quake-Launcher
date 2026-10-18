@@ -57,4 +57,5 @@ Install [.NET 10.0 Desktop Runtime](https://builds.dotnet.microsoft.com/dotnet/W
 # Credits
 - Thanks to [NightFright2k19](https://github.com/NightFright2k19) for feedback and bug reports.
 - Thanks to [MaxED](https://github.com/m-x-d) and his Simple Quake Launcher 2.
-- Thanks to MrElusive for [Omicron bots](https://www.slipseer.com/index.php?resources/omicron-bots.101/).
+- Thanks to MrElusive for [Omicron Bots](https://www.slipseer.com/index.php?resources/omicron-bots.101/).
+- Thanks to Niehztog for [Gladiator Bot Restored](https://github.com/Niehztog/gladiator-bot-restored).
