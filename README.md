@@ -40,6 +40,7 @@ All games:
 - Proper demo support - done (v1.0)
 - Random map at random difficulty (v1.1)
 - Custom profiles - done (v1.2)
+- UI polish - donw (v1.3)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
