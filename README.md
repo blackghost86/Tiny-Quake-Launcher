@@ -40,14 +40,15 @@ All games:
 - Proper demo support - done (v1.0)
 - Random map at random difficulty (v1.1)
 - Custom profiles - done (v1.2)
-- UI polish - done (v1.3)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
 - Shared folder support - done (v0.9.4)
-- Parent folder support for all engines - done (v0.9.7)
+- Parent folder support - done (v0.9.7)
+- UI polish - done (v1.3)
 - Support for other games - not planned yet
 - Linux version - not planned yet
+
 
 # Installation
 Extract and run TQLauncher.exe on your desktop or from your Quake directory.
