@@ -41,6 +41,7 @@ All games:
 - Proper demo support - done (v1.0)
 - Random map at random difficulty (v1.1)
 - Custom profiles - done (v1.2)
+- UI polish - done (v1.3)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
@@ -62,6 +63,30 @@ Changelog
 --------------------------------------------------------------------------
 Version history from the latest to the oldest version released.
 
+1.3
+---
+New features:
+- Added support for QuakeWorld demo recordings (.qwd and .mvd files).
+- Added support for the latest Quake Enhanced - GOG Edition.
+- Added support for Gladiator Bot Restored (Quake 2).
+
+Bug fixes:
+- Switched Save and Cancel buttons in Save profile message.
+- Fixed alignment for every title and drop-down item.
+- Fixed blank profile selection by adding none.
+
+Improvements:
+- Added warning when deleting a profile, but no profile is selected.
+- Added random option to mode selection (for multiplayer only).
+- Renamed save/delete profile message title for both modes.
+- Renamed bottom text when enabling multiplayer settings.
+- Renamed bottom text for clear variable selection.
+
+UI:
+- Replaced multiplayer settings checkboxes with a drop-down list.
+- Replaced icons for save profile and browse folder buttons.
+- Changed color for delete profile button (cross is red).
+
 1.2
 ---
 New features:
@@ -78,7 +103,7 @@ Bug fixes:
 - Fixed difficulty selection if demo is selected.
 
 Improvements:
-- Warning added if shortcut is created with random/no maps.
+- Added warning if shortcut is created with random/no maps.
 
 1.1
 ---
