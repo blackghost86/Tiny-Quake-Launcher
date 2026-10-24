@@ -113,12 +113,20 @@ public class EngineDetector
                 "Mark V",
                 executablePath),
 
+            "quake_x64_steam.exe" => CreateEngine(
+                "Quake (Steam)",
+                executablePath),
+
             "quake_shipping_playfab_gog_x64.exe" => CreateEngine(
                 "Quake GOG",
                 executablePath),
 
-            // Alternative executable for Quake GOG.
+            // Alternative executables for Quake GOG.
             "quake_gog.exe" => CreateEngine(
+                "Quake GOG",
+                executablePath),
+
+            "quake_x64.exe" => CreateEngine(
                 "Quake GOG",
                 executablePath),
 
@@ -126,8 +134,9 @@ public class EngineDetector
                 "Quake EGS",
                 executablePath),
 
-            "quake_x64_steam.exe" => CreateEngine(
-                "Quake (Steam)",
+            // Alternative executable for Quake EGS.
+            "quake_x64_egs.exe" => CreateEngine(
+                "Quake EGS",
                 executablePath),
 
             "quake.exe" => CreateEngine(
@@ -150,7 +159,7 @@ public class EngineDetector
                 "WinQuake",
                 executablePath),
 
-            // FitzQuake engine is outdated, but still in use.
+            // FitzQuake engine is outdated, but still used.
             "fitzquake.exe" => CreateEngine(
                 "FitzQuake",
                 executablePath),
