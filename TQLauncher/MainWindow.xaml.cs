@@ -126,15 +126,27 @@ public partial class MainWindow : Window
             "TQLauncherTab1.json");
 
     private bool restoreMapSelectionCleared;
+
     private bool restoreDifficultySelectionCleared;
+
     private bool restoringSavedSelections;
+
     private bool demoSelectionActive;
+
     private bool updatingCommandArguments;
+
     private bool commandArgumentsEdited;
+
     private string lastAcceptedQuakeFolder = "";
+
     private bool suppressNoEpisodeWarning;
+
     private readonly LauncherProfiles profiles = LauncherProfiles.Load("TQLauncherTab1Profiles.json");
+
     private bool loadingProfiles;
+
+    private readonly LauncherProfile noProfilePlaceholder =
+        new() { Name = "None" };
 
     public MainWindow()
     {
@@ -605,11 +617,16 @@ public partial class MainWindow : Window
         try
         {
             ProfileComboBox.Items.Clear();
+            ProfileComboBox.Items.Add(noProfilePlaceholder);
 
             foreach (LauncherProfile profile in profiles.Items)
             {
                 ProfileComboBox.Items.Add(profile);
             }
+
+            // Keep the normal, non-editable ComboBox styling while showing
+            // a visible placeholder whenever no real profile is selected.
+            ProfileComboBox.SelectedItem = noProfilePlaceholder;
         }
         finally
         {
@@ -626,7 +643,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (ProfileComboBox.SelectedItem is LauncherProfile profile)
+        if (ProfileComboBox.SelectedItem is LauncherProfile profile &&
+            !ReferenceEquals(profile, noProfilePlaceholder))
         {
             ApplyProfile(profile);
         }
@@ -637,7 +655,10 @@ public partial class MainWindow : Window
         RoutedEventArgs e)
     {
         string? defaultName =
-            (ProfileComboBox.SelectedItem as LauncherProfile)?.Name;
+            ProfileComboBox.SelectedItem is LauncherProfile selectedProfile &&
+            !ReferenceEquals(selectedProfile, noProfilePlaceholder)
+                ? selectedProfile.Name
+                : null;
 
         string? profileName =
             PromptForProfileName(defaultName);
@@ -690,15 +711,22 @@ public partial class MainWindow : Window
         object sender,
         RoutedEventArgs e)
     {
-        if (ProfileComboBox.SelectedItem is not LauncherProfile profile)
+        if (ProfileComboBox.SelectedItem is not LauncherProfile profile ||
+            ReferenceEquals(profile, noProfilePlaceholder))
         {
+            //No active singleplayer profile warning.
+            System.Windows.MessageBox.Show(
+                "There is no singleplayer profile selected.",
+                "Warning",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
         MessageBoxResult result =
             System.Windows.MessageBox.Show(
                 $"Delete profile {profile.Name}?",
-                "Delete profile",
+                "Delete singleplayer profile",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -711,7 +739,7 @@ public partial class MainWindow : Window
         {
             profiles.Save("TQLauncherTab1Profiles.json");
             LoadProfiles();
-            ProfileComboBox.SelectedIndex = -1;
+            ProfileComboBox.SelectedItem = noProfilePlaceholder;
 
             StatusText.Text =
                 $"Profile {profile.Name} deleted.";
@@ -940,7 +968,7 @@ public partial class MainWindow : Window
         System.Windows.Window dialog =
             new()
             {
-                Title = "Save profile",
+                Title = "Save singleplayer profile",
                 Width = 360,
                 Height = 150,
                 WindowStartupLocation =
@@ -981,22 +1009,23 @@ public partial class MainWindow : Window
                 Margin = new Thickness(0, 10, 0, 0)
             };
 
-        System.Windows.Controls.Button cancelButton =
-            new()
-            {
-                Content = "Cancel",
-                Width = 75,
-                Height = 26,
-                Margin = new Thickness(0, 0, 6, 0)
-            };
-
+        // Save and Cancel buttons from Save profile message.
         System.Windows.Controls.Button saveButton =
             new()
             {
                 Content = "Save",
                 Width = 75,
                 Height = 26,
+                Margin = new Thickness(0, 0, 6, 0),
                 IsDefault = true
+            };
+
+        System.Windows.Controls.Button cancelButton =
+            new()
+            {
+                Content = "Cancel",
+                Width = 75,
+                Height = 26,
             };
 
         cancelButton.Click +=
@@ -1014,7 +1043,7 @@ public partial class MainWindow : Window
                     System.Windows.MessageBox.Show(
                         dialog,
                         "Enter a profile name.",
-                        "Save profile",
+                        "Information",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                     return;
@@ -1024,8 +1053,9 @@ public partial class MainWindow : Window
                 dialog.Close();
             };
 
-        buttons.Children.Add(cancelButton);
         buttons.Children.Add(saveButton);
+        buttons.Children.Add(cancelButton);
+
         panel.Children.Add(buttons);
 
         dialog.Content = panel;
@@ -2890,7 +2920,7 @@ public partial class MainWindow : Window
             }
             catch (IOException)
             {
-                // Skip folders that disappear or otherwise cannot be read.
+                // Skip hidden folders or otherwise cannot be read.
                 continue;
             }
 
@@ -4763,7 +4793,7 @@ public partial class MainWindow : Window
             }
 
             // Resolve the Random map only for the actual launch. Keep the command
-            // preview as "+map ?" and pass an actual detected map to the engine.
+            // line preview as placeholder and pass an actual map to the engine.
             if (selectedDemo == null &&
                 IsRandomMapSelected(selectedMap))
             {

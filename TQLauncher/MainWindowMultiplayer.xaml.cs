@@ -75,6 +75,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
     private readonly QuakeHandler quakeHandler = new();
 
     private readonly Quake2Handler quake2Handler = new();
+
     private readonly Quake3Handler quake3Handler = new();
 
     private static readonly string SettingsFolder =
@@ -89,19 +90,40 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             "TQLauncherTab2.json");
 
     private bool restoreMapSelectionCleared;
+
     private bool restoreModeSelectionCleared;
+
     private bool restoringSavedSelections;
+
     private bool updatingCommandArguments;
+
     private bool commandArgumentsEdited;
+
     private string lastAcceptedQuakeFolder = "";
+
     private bool suppressNoEpisodeWarning;
+
     private readonly Profiles.Profiles profiles = Profiles.Profiles.Load("TQLauncherTab2Profiles.json");
+
     private bool loadingProfiles;
 
+    private readonly LauncherProfile noProfilePlaceholder =
+        new() { Name = "None" };
 
     public MainWindowMultiplayer()
     {
         InitializeComponent();
+
+        LimitSettingComboBoxMultiplayer.Items.Insert(
+            0,
+            new ComboBoxItem { Content = "None" });
+
+        LimitSettingComboBoxMultiplayer.SelectedIndex = 0;
+        ClearLimitSettingButtonMultiplayer.IsEnabled = false;
+        StatusTextMultiplayer.Text =
+            "Cleared variable selection.";
+        LimitSettingComboBoxMultiplayer.SelectionChanged +=
+            LimitSettingComboBoxMultiplayer_SelectionChanged;
 
         ConfigureMapDisplay();
 
@@ -182,13 +204,16 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         try
         {
             ProfileComboBoxMultiplayer.Items.Clear();
+            ProfileComboBoxMultiplayer.Items.Add(noProfilePlaceholder);
 
             foreach (LauncherProfile profile in profiles.Items)
             {
                 ProfileComboBoxMultiplayer.Items.Add(profile);
             }
 
-            ProfileComboBoxMultiplayer.SelectedIndex = -1;
+            // Keep the normal, non-editable ComboBox styling while showing
+            // a visible placeholder whenever no real profile is selected.
+            ProfileComboBoxMultiplayer.SelectedItem = noProfilePlaceholder;
         }
         finally
         {
@@ -201,7 +226,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         SelectionChangedEventArgs e)
     {
         if (loadingProfiles ||
-            ProfileComboBoxMultiplayer.SelectedItem is not LauncherProfile profile)
+            ProfileComboBoxMultiplayer.SelectedItem is not LauncherProfile profile ||
+            ReferenceEquals(profile, noProfilePlaceholder))
         {
             return;
         }
@@ -214,7 +240,10 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         RoutedEventArgs e)
     {
         string? defaultName =
-            (ProfileComboBoxMultiplayer.SelectedItem as LauncherProfile)?.Name;
+            ProfileComboBoxMultiplayer.SelectedItem is LauncherProfile selectedProfile &&
+            !ReferenceEquals(selectedProfile, noProfilePlaceholder)
+                ? selectedProfile.Name
+                : null;
 
         string? profileName =
             PromptForProfileName(defaultName);
@@ -257,15 +286,22 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         object sender,
         RoutedEventArgs e)
     {
-        if (ProfileComboBoxMultiplayer.SelectedItem is not LauncherProfile profile)
+        if (ProfileComboBoxMultiplayer.SelectedItem is not LauncherProfile profile ||
+            ReferenceEquals(profile, noProfilePlaceholder))
         {
+            //No active multiplayer profile warning.
+            System.Windows.MessageBox.Show(
+                "There is no mutiplayer profile selected.",
+                "Warning",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
             return;
         }
 
         MessageBoxResult result =
             System.Windows.MessageBox.Show(
                 $"Delete profile {profile.Name}?",
-                "Delete profile",
+                "Delete multiplayer profile",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
@@ -332,13 +368,13 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                     : selectedMode!.Value,
             ModeSelectionCleared = modeCleared,
             FragLimitEnabled =
-                FragLimitCheckBoxMultiplayer.IsChecked == true,
+                LimitSettingComboBoxMultiplayer.SelectedIndex == 1,
             FlagLimitEnabled =
-                FlagLimitCheckBoxMultiplayer.IsChecked == true,
+                LimitSettingComboBoxMultiplayer.SelectedIndex == 2,
             TimeLimitEnabled =
-                TimeLimitCheckBoxMultiplayer.IsChecked == true,
+                LimitSettingComboBoxMultiplayer.SelectedIndex == 3,
             MaxPlayersEnabled =
-                MaxPlayersCheckBoxMultiplayer.IsChecked == true,
+                LimitSettingComboBoxMultiplayer.SelectedIndex == 4,
             ExtraArguments =
                 ExtraArgumentsTextBoxMultiplayer.Text
         };
@@ -478,17 +514,11 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                     mode ?? ModeComboBoxMultiplayer.SelectedItem;
             }
 
-            FragLimitCheckBoxMultiplayer.IsChecked =
-                profile.FragLimitEnabled;
-
-            FlagLimitCheckBoxMultiplayer.IsChecked =
-                profile.FlagLimitEnabled;
-
-            TimeLimitCheckBoxMultiplayer.IsChecked =
-                profile.TimeLimitEnabled;
-
-            MaxPlayersCheckBoxMultiplayer.IsChecked =
-                profile.MaxPlayersEnabled;
+            SelectLimitSetting(
+                profile.FragLimitEnabled,
+                profile.FlagLimitEnabled,
+                profile.TimeLimitEnabled,
+                profile.MaxPlayersEnabled);
 
             ExtraArgumentsTextBoxMultiplayer.Text =
                 profile.ExtraArguments ?? "";
@@ -523,7 +553,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         System.Windows.Window dialog =
             new()
             {
-                Title = "Save profile",
+                Title = "Save multiplayer profile",
                 Width = 360,
                 Height = 160,
                 WindowStartupLocation =
@@ -565,22 +595,22 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 Margin = new Thickness(0, 10, 0, 0)
             };
 
-        System.Windows.Controls.Button cancelButton =
-            new()
-            {
-                Content = "Cancel",
-                Width = 75,
-                Height = 26,
-                Margin = new Thickness(0, 0, 6, 0)
-            };
-
         System.Windows.Controls.Button saveButton =
             new()
             {
                 Content = "Save",
                 Width = 75,
                 Height = 26,
+                Margin = new Thickness(0, 0, 6, 0),
                 IsDefault = true
+            };
+
+        System.Windows.Controls.Button cancelButton =
+            new()
+            {
+                Content = "Cancel",
+                Width = 75,
+                Height = 26,
             };
 
         cancelButton.Click +=
@@ -598,7 +628,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                     System.Windows.MessageBox.Show(
                         dialog,
                         "Enter a profile name.",
-                        "Save profile",
+                        "Information",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                     return;
@@ -608,8 +638,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 dialog.Close();
             };
 
-        buttons.Children.Add(cancelButton);
         buttons.Children.Add(saveButton);
+        buttons.Children.Add(cancelButton);
 
         panel.Children.Add(buttons);
         dialog.Content = panel;
@@ -844,16 +874,16 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             }
 
             settings.FragLimitEnabled =
-                FragLimitCheckBoxMultiplayer.IsChecked == true;
+                LimitSettingComboBoxMultiplayer.SelectedIndex == 1;
 
             settings.FlagLimitEnabled =
-                FlagLimitCheckBoxMultiplayer.IsChecked == true;
+                LimitSettingComboBoxMultiplayer.SelectedIndex == 2;
 
             settings.TimeLimitEnabled =
-                TimeLimitCheckBoxMultiplayer.IsChecked == true;
+                LimitSettingComboBoxMultiplayer.SelectedIndex == 3;
 
             settings.MaxPlayersEnabled =
-                MaxPlayersCheckBoxMultiplayer.IsChecked == true;
+                LimitSettingComboBoxMultiplayer.SelectedIndex == 4;
 
             settings.CloseAfterLaunch =
                 CloseAfterLaunchCheckBoxMultiplayer.IsChecked == true;
@@ -987,17 +1017,11 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             }
         }
 
-        FragLimitCheckBoxMultiplayer.IsChecked =
-            settings.FragLimitEnabled;
-
-        FlagLimitCheckBoxMultiplayer.IsChecked =
-            settings.FlagLimitEnabled;
-
-        TimeLimitCheckBoxMultiplayer.IsChecked =
-            settings.TimeLimitEnabled;
-
-        MaxPlayersCheckBoxMultiplayer.IsChecked =
-            settings.MaxPlayersEnabled;
+        SelectLimitSetting(
+            settings.FragLimitEnabled,
+            settings.FlagLimitEnabled,
+            settings.TimeLimitEnabled,
+            settings.MaxPlayersEnabled);
 
         ExtraArgumentsTextBoxMultiplayer.Text =
             settings.ExtraArguments ?? "";
@@ -1005,28 +1029,54 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         UpdateCommandArguments();
     }
 
-    private void LimitCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void LimitSettingComboBoxMultiplayer_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
     {
-        if (sender is System.Windows.Controls.CheckBox checkBox)
-        {
-            // Multiplayer limit checkboxes displayed in the menu.
-            string limitName =
-                checkBox.Name == "FragLimitCheckBoxMultiplayer" ? "Kill limit" :
-                checkBox.Name == "FlagLimitCheckBoxMultiplayer" ? "Flag limit" :
-                checkBox.Name == "TimeLimitCheckBoxMultiplayer" ? "Time limit" :
-                checkBox.Name == "MaxPlayersCheckBoxMultiplayer" ? "Max players" :
-                "";
+        string limitName =
+            (LimitSettingComboBoxMultiplayer.SelectedItem as ComboBoxItem)
+                ?.Content?.ToString() ?? "None";
 
-            if (!string.IsNullOrEmpty(limitName))
-            {
-                StatusTextMultiplayer.Text =
-                    $"{limitName} {(checkBox.IsChecked == true
-                    ? "option enabled" : "option disabled")}.";
-            }
-        }
+        StatusTextMultiplayer.Text =
+            limitName == "None"
+                ? "No limit selected."
+                : $"{limitName} selected.";
+
+        ClearLimitSettingButtonMultiplayer.IsEnabled =
+            LimitSettingComboBoxMultiplayer.SelectedIndex > 0;
 
         UpdateCommandArguments();
-        SaveCurrentSettings();
+
+        if (!restoringSavedSelections && !loadingProfiles)
+        {
+            SaveCurrentSettings();
+        }
+    }
+
+    private void ClearLimitSettingButtonMultiplayer_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        LimitSettingComboBoxMultiplayer.SelectedIndex = 0;
+        ClearLimitSettingButtonMultiplayer.IsEnabled = false;
+        StatusTextMultiplayer.Text =
+            "Cleared variable selection.";
+    }
+
+    private void SelectLimitSetting(
+        bool fragLimitEnabled,
+        bool flagLimitEnabled,
+        bool timeLimitEnabled,
+        bool maxPlayersEnabled)
+    {
+        // The variable drop-down list supports one multiplayer limit activated at
+        // a time so preserve the first enabled option in the displayed order.
+        LimitSettingComboBoxMultiplayer.SelectedIndex =
+            fragLimitEnabled ? 1 :
+            flagLimitEnabled ? 2 :
+            timeLimitEnabled ? 3 :
+            maxPlayersEnabled ? 4 :
+            0;
     }
 
     private void MainWindowMultiplayer_Unloaded(
@@ -1071,9 +1121,9 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             DetectQuakeInstallation(
                 selectedFolder);
 
-            if (ModeComboBoxMultiplayer.Items.Count > 1)
+            if (ModeComboBoxMultiplayer.Items.Count > 2)
             {
-                ModeComboBoxMultiplayer.SelectedIndex = 1;
+                ModeComboBoxMultiplayer.SelectedIndex = 2;
             }
 
             UpdateModeControlsState();
@@ -1131,7 +1181,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
         if (ModeComboBoxMultiplayer.Items.Count > 1)
         {
-            ModeComboBoxMultiplayer.SelectedIndex = 1;
+            ModeComboBoxMultiplayer.SelectedIndex = 2;
         }
     }
 
@@ -2189,11 +2239,11 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         {
             MissionComboBoxMultiplayer.SelectedIndex = 0;
 
-            // An episode was detected, so restore the normal mode
-            // options and use Normal as the default.
+            // An episode was detected, so restore the mode options
+            // and select the first actual mode by default.
             if (ModeComboBoxMultiplayer.Items.Count > 2)
             {
-                ModeComboBoxMultiplayer.SelectedIndex = 1;
+                ModeComboBoxMultiplayer.SelectedIndex = 2;
             }
             else
             {
@@ -2639,7 +2689,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             }
             catch (IOException)
             {
-                // Skip folders that disappear or otherwise cannot be read.
+                // Skip hidden folders or otherwise cannot be read.
                 continue;
             }
 
@@ -2937,8 +2987,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             return;
         }
 
-        // Resolution modes are engine-specific. Rebuild the selector whenever
-        // the selected engine changes so Quake 2 does not show Quake modes.
+        // Resolution modes are game and engine-specific.
         SetupResolutions();
 
         if (!restoringSavedSelections)
@@ -2986,7 +3035,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             !restoreModeSelectionCleared &&
             ModeComboBoxMultiplayer.Items.Count > 0)
         {
-            ModeComboBoxMultiplayer.SelectedIndex = 1;
+            ModeComboBoxMultiplayer.SelectedIndex = 2;
         }
 
         UpdateModeControlsState();
@@ -3046,6 +3095,14 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             {
                 Name = "None",
                 Value = 0,
+                Foreground = HexBrush("#000000")
+            });
+
+        ModeComboBoxMultiplayer.Items.Add(
+            new MultiplayerMode
+            {
+                Name = "Random",
+                Value = -1,
                 Foreground = HexBrush("#000000")
             });
 
@@ -3140,7 +3197,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 });
         }
 
-        ModeComboBoxMultiplayer.SelectedIndex = 1;
+        ModeComboBoxMultiplayer.SelectedIndex = 2;
         UpdateModeControlsState();
     }
 
@@ -3153,8 +3210,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
     }
 
     private void CloseAfterLaunchCheckBox_Click(
-    object sender,
-    RoutedEventArgs e)
+        object sender,
+        RoutedEventArgs e)
     {
         SaveCurrentSettings();
     }
@@ -3220,8 +3277,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
     }
 
     private void Multiplayer_CreateDesktopShortcutButton_Click(
-    object sender,
-    RoutedEventArgs e)
+        object sender,
+        RoutedEventArgs e)
     {
         Engine? engine =
             EngineComboBoxMultiplayer.SelectedItem as Engine;
@@ -3406,28 +3463,27 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
     private void AddLimitArguments(List<string> arguments)
     {
-        if (FragLimitCheckBoxMultiplayer.IsChecked == true)
+        switch (LimitSettingComboBoxMultiplayer.SelectedIndex)
         {
-            arguments.Add("+fraglimit");
-            arguments.Add("20");
-        }
+            case 1:
+                arguments.Add("+fraglimit");
+                arguments.Add("20");
+                break;
 
-        if (FlagLimitCheckBoxMultiplayer.IsChecked == true)
-        {
-            arguments.Add("+flaglimit");
-            arguments.Add("10");
-        }
+            case 2:
+                arguments.Add("+flaglimit");
+                arguments.Add("10");
+                break;
 
-        if (TimeLimitCheckBoxMultiplayer.IsChecked == true)
-        {
-            arguments.Add("+timelimit");
-            arguments.Add("10");
-        }
+            case 3:
+                arguments.Add("+timelimit");
+                arguments.Add("10");
+                break;
 
-        if (MaxPlayersCheckBoxMultiplayer.IsChecked == true)
-        {
-            arguments.Add("-listen");
-            arguments.Add("8");
+            case 4:
+                arguments.Add("-listen");
+                arguments.Add("8");
+                break;
         }
     }
 
@@ -3543,11 +3599,12 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             mapName = "?";
         }
 
-        if (ModeComboBoxMultiplayer.SelectedItem
-            is MultiplayerMode mode && mode.Value != 0)
+        if (ModeComboBoxMultiplayer.SelectedItem is MultiplayerMode mode &&
+            mode.Name != "None")
         {
             arguments.Add("+deathmatch");
-            arguments.Add(mode.Value.ToString());
+            arguments.Add(
+                mode.Name == "Random" ? "?" : mode.Value.ToString());
         }
 
         if (!string.IsNullOrWhiteSpace(mapName))
@@ -3635,7 +3692,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             mode.Name != "None")
         {
             arguments.Add("+deathmatch");
-            arguments.Add(mode.Value.ToString());
+            arguments.Add(
+                mode.Name == "Random" ? "?" : mode.Value.ToString());
         }
 
         if (!string.IsNullOrWhiteSpace(mapName))
@@ -3705,7 +3763,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         {
             arguments.Add("+set");
             arguments.Add("g_gametype");
-            arguments.Add(mode.Value.ToString());
+            arguments.Add(
+                mode.Name == "Random" ? "?" : mode.Value.ToString());
         }
 
         if (!string.IsNullOrWhiteSpace(mapName))
@@ -4204,8 +4263,53 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             List<string> arguments =
                 BuildLaunchArguments();
 
+            // Resolve the Random mode only for the actual launch. Keep the command
+            // line preview as placeholder and pass an actual mode to the engine.
+            if (ModeComboBoxMultiplayer.SelectedItem is MultiplayerMode randomMode &&
+                string.Equals(
+                    randomMode.Name,
+                    "Random",
+                    StringComparison.Ordinal))
+            {
+                List<MultiplayerMode> availableModes =
+                    ModeComboBoxMultiplayer.Items
+                        .OfType<MultiplayerMode>()
+                        .Where(mode =>
+                            !string.Equals(mode.Name, "None", StringComparison.Ordinal) &&
+                            !string.Equals(mode.Name, "Random", StringComparison.Ordinal))
+                        .ToList();
+
+                string modeArgumentName =
+                    engine.Game == QuakeGame.Quake3
+                        ? "g_gametype"
+                        : "+deathmatch";
+
+                int modeArgumentIndex =
+                    arguments.FindIndex(argument =>
+                        string.Equals(
+                            argument,
+                            modeArgumentName,
+                            StringComparison.OrdinalIgnoreCase));
+
+                int valueArgumentIndex =
+                    engine.Game == QuakeGame.Quake3
+                        ? modeArgumentIndex + 1
+                        : modeArgumentIndex + 1;
+
+                if (availableModes.Count > 0 &&
+                    modeArgumentIndex >= 0 &&
+                    valueArgumentIndex < arguments.Count &&
+                    string.Equals(arguments[valueArgumentIndex], "?", StringComparison.Ordinal))
+                {
+                    MultiplayerMode chosenMode =
+                        availableModes[new Random().Next(availableModes.Count)];
+
+                    arguments[valueArgumentIndex] = chosenMode.Value.ToString();
+                }
+            }
+
             // Resolve the Random map only for the actual launch. Keep the command
-            // preview as "+map ?" and pass an actual detected map to the engine.
+            // line preview as placeholder and pass an actual map to the engine.
             if (MapComboBoxMultiplayer.SelectedItem is MapInfo randomMapSelection &&
                 string.Equals(
                     randomMapSelection.FileName,

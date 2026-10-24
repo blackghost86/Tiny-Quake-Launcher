@@ -21,9 +21,9 @@
 		<Copyright>Copyright © 2026 TQLauncher</Copyright>
 
 		<!-- Version -->
-		<AssemblyVersion>1.2.0.0</AssemblyVersion>
-		<FileVersion>1.2.0.0</FileVersion>
-		<InformationalVersion>1.2.0</InformationalVersion>
+		<AssemblyVersion>1.3.0.0</AssemblyVersion>
+		<FileVersion>1.3.0.0</FileVersion>
+		<InformationalVersion>1.3.0</InformationalVersion>
 
 		<!-- Framework-dependent single-file publish -->
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -36,6 +36,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<!-- Profile icons -->
+		<Resource Include="Buttons\delete_32x32.png" />
+		<Resource Include="Buttons\save_32x32.png" />
+		<!-- Folder icons -->
+		<Resource Include="Buttons\browse_folder_32x32.png" />
+		<!-- Refresh icons -->
 		<Resource Include="Buttons\refresh_32x32.png" />
 	</ItemGroup>
 
