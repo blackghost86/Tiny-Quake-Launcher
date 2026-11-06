@@ -11,8 +11,7 @@ using TinyQuakeLauncher.Data;
 using TinyQuakeLauncher.Games;
 using TinyQuakeLauncher.Models;
 using TinyQuakeLauncher.Services;
-using LauncherProfiles = TinyQuakeLauncher.Profiles.Profiles;
-using TinyQuakeLauncher.Profiles;
+using ProfileStore = TinyQuakeLauncher.Models.Profiles;
 
 namespace TinyQuakeLauncher;
 
@@ -141,7 +140,8 @@ public partial class MainWindow : Window
 
     private bool suppressNoEpisodeWarning;
 
-    private readonly LauncherProfiles profiles = LauncherProfiles.Load("TQLauncherTab1Profiles.json");
+    private readonly ProfileStore profiles =
+        ProfileStore.Load("TQLauncherTab1Profiles.json");
 
     private bool loadingProfiles;
 
@@ -192,7 +192,11 @@ public partial class MainWindow : Window
                 QuakeFolderTextBox.Padding.Bottom);
 
         CommandArgumentsTextBox.ToolTip =
-            "Command line arguments based on preferred settings";
+            "Command line arguments based on preferred settings as follows:\n\n" +
+            "Hyphen prefix (-): Engine-level command line parameters that\n" +
+            "configure hardware, directories or startup modes.\n\n" +
+            "Plus prefix (+): Console commands or CVars that are executed\n" +
+            "automatically as soon as the engine initializes.";
 
         // The command line preview can also be edited directly. Manual
         // changes are used for the next launch/shortcut until another
@@ -678,10 +682,10 @@ public partial class MainWindow : Window
         {
             MessageBoxResult result =
                 System.Windows.MessageBox.Show(
-                    $"A profile named {profile.Name} already exists. Do you want to replace it?",
-                    "Save profile",
+                    $"Profile already exists. Do you want to replace it?",
+                    "Warning",
                     MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                    MessageBoxImage.Warning);
 
             if (result != MessageBoxResult.Yes)
             {
@@ -704,7 +708,7 @@ public partial class MainWindow : Window
                         StringComparison.OrdinalIgnoreCase));
 
         StatusText.Text =
-            $"Profile {profile.Name} saved.";
+            $"Saved {profile.Name} profile.";
     }
 
     private void DeleteProfileButton_Click(
@@ -725,7 +729,7 @@ public partial class MainWindow : Window
 
         MessageBoxResult result =
             System.Windows.MessageBox.Show(
-                $"Delete profile {profile.Name}?",
+                $"Delete {profile.Name} profile?",
                 "Delete singleplayer profile",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
@@ -742,7 +746,7 @@ public partial class MainWindow : Window
             ProfileComboBox.SelectedItem = noProfilePlaceholder;
 
             StatusText.Text =
-                $"Profile {profile.Name} deleted.";
+                $"Deleted {profile.Name} profile.";
         }
     }
 
@@ -953,7 +957,7 @@ public partial class MainWindow : Window
 
             // Status text for loading a custom singleplayer profile.
             StatusText.Text =
-                $"Profile {profile.Name} loaded.";
+                $"Loaded {profile.Name} profile.";
         }
         finally
         {
@@ -3319,7 +3323,7 @@ public partial class MainWindow : Window
             {
                 Name = "Random",
                 Value = -2,
-                Foreground = System.Windows.Media.Brushes.Black
+                Foreground = HexBrush("#595959")
             });
 
         DifficultyComboBox.Items.Add(

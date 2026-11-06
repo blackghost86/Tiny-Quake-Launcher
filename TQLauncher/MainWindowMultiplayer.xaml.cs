@@ -11,7 +11,6 @@ using TinyQuakeLauncher.Data;
 using TinyQuakeLauncher.Games;
 using TinyQuakeLauncher.Models;
 using TinyQuakeLauncher.Services;
-using TinyQuakeLauncher.Profiles;
 
 namespace TinyQuakeLauncher;
 
@@ -103,7 +102,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
     private bool suppressNoEpisodeWarning;
 
-    private readonly Profiles.Profiles profiles = Profiles.Profiles.Load("TQLauncherTab2Profiles.json");
+    private readonly Profiles profiles =
+        Profiles.Load("TQLauncherTab2Profiles.json");
 
     private bool loadingProfiles;
 
@@ -134,7 +134,11 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 QuakeFolderTextBoxMultiplayer.Padding.Bottom);
 
         CommandArgumentsTextBoxMultiplayer.ToolTip =
-            "Command line arguments based on preferred settings";
+            "Command line arguments based on preferred settings as follows:\n\n" +
+            "Hyphen prefix (-): Engine-level command line parameters that\n" +
+            "configure hardware, directories or startup modes.\n\n" +
+            "Plus prefix (+): Console commands or CVars that are executed\n" +
+            "automatically as soon as the engine initializes.";
 
         // The command line preview can also be edited directly. Manual
         // changes are used for the next launch/shortcut until another
@@ -256,6 +260,24 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         LauncherProfile profile =
             CreateCurrentProfile(profileName.Trim());
 
+        LauncherProfile? existing =
+            profiles.Find(profile.Name);
+
+        if (existing != null)
+        {
+            MessageBoxResult result =
+                System.Windows.MessageBox.Show(
+                    $"Profile already exists. Do you want to replace it?",
+                    "Warning",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+        }
+
         profiles.AddOrReplace(profile);
         profiles.Save("TQLauncherTab2Profiles.json");
 
@@ -279,7 +301,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         }
 
         StatusTextMultiplayer.Text =
-            $"Saved profile {profile.Name}.";
+            $"Saved {profile.Name} profile.";
     }
 
     private void DeleteProfileButtonMultiplayer_Click(
@@ -300,7 +322,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
         MessageBoxResult result =
             System.Windows.MessageBox.Show(
-                $"Delete profile {profile.Name}?",
+                $"Delete {profile.Name} profile?",
                 "Delete multiplayer profile",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -316,7 +338,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         LoadProfiles();
 
         StatusTextMultiplayer.Text =
-            $"Deleted profile {profile.Name}.";
+            $"Deleted {profile.Name} profile.";
     }
 
     private LauncherProfile CreateCurrentProfile(
@@ -538,7 +560,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
             // Status text for loading a custom multiplayer profile.
             StatusTextMultiplayer.Text =
-                $"Profile {profile.Name} loaded.";
+                $"Loaded {profile.Name} profile.";
         }
         finally
         {

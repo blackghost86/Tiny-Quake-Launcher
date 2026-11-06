@@ -9,73 +9,43 @@
         WindowStartupLocation="CenterScreen"
         Background="#F2F2F2">
 
-    <TabControl Margin="20"
+    <TabControl Margin="20,15,20,20"
                 Background="#F2F2F2">
         <TabControl.Resources>
             <Style TargetType="{x:Type TabItem}">
-                <Setter Property="Background" Value="#F2F2F2"/>
-                <Setter Property="BorderBrush" Value="#999999"/>
                 <Setter Property="Foreground" Value="Black"/>
+                <Setter Property="Padding" Value="0,0,0,7"/>
+                <Setter Property="Margin" Value="0,0,22,0"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type TabItem}">
-                            <Grid>
+                            <Grid MinHeight="25">
+                                <ContentPresenter
+                                    x:Name="HeaderPresenter"
+                                    ContentSource="Header"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"/>
                                 <Border
-                                    x:Name="TabBorder"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="1,1,1,0"
-                                    Padding="9,4"
-                                    Margin="0,-2,0,0">
-                                    <ContentPresenter
-                                        ContentSource="Header"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"/>
-                                </Border>
-
-                                <!-- Explicit bottom border for inactive tabs -->
-                                <Border
-                                    x:Name="InactiveBottomBorder"
-                                    Height="1"
-                                    Background="#999999"
+                                    x:Name="SelectedUnderline"
+                                    Height="3"
+                                    Width="{Binding ActualWidth, ElementName=HeaderPresenter}"
+                                    Background="Black"
+                                    HorizontalAlignment="Left"
                                     VerticalAlignment="Bottom"
-                                    HorizontalAlignment="Stretch"
-                                    Panel.ZIndex="10"/>
+                                    Margin="0"
+                                    Visibility="Collapsed"/>
                             </Grid>
-
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="TabBorder" Property="Background" Value="#F2F2F2"/>
-                                    <Setter TargetName="TabBorder" Property="Margin" Value="0,-3,0,0"/>
-                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
-                                    <Setter TargetName="InactiveBottomBorder" Property="Visibility" Value="Collapsed"/>
+                                    <Setter TargetName="SelectedUnderline"
+                                            Property="Visibility"
+                                            Value="Visible"/>
+                                    <Setter TargetName="HeaderPresenter"
+                                            Property="TextElement.FontWeight"
+                                            Value="Bold"/>
                                 </Trigger>
-                                <Trigger Property="IsSelected" Value="False">
-                                    <Setter TargetName="TabBorder" Property="Margin" Value="0,0,0,0"/>
-                                    <Setter TargetName="TabBorder" Property="Background" Value="White"/>
-                                    <Setter TargetName="InactiveBottomBorder" Property="Visibility" Value="Visible"/>
-                                </Trigger>
-
-                                <!-- Active tabs are using the same gray color as background -->
-                                <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="#999999"/>
-                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
-                                </Trigger>
-
-                                <!-- Inactive tabs keep their normal gray border -->
-                                <Trigger Property="IsSelected" Value="False">
-                                    <Setter TargetName="TabBorder" Property="BorderBrush" Value="#999999"/>
-                                </Trigger>
-                                <DataTrigger Binding="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" Value="Multiplayer">
-                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
-                                </DataTrigger>
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}" Value="Singleplayer"/>
-                                        <Condition Binding="{Binding SelectedItem.Header, RelativeSource={RelativeSource AncestorType={x:Type TabControl}}}" Value="Multiplayer"/>
-                                    </MultiDataTrigger.Conditions>
-                                    <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
-                                </MultiDataTrigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
@@ -94,22 +64,17 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-
-                    <!-- Full-width gray line below the tab headers -->
+                    <ItemsPresenter
+                        Grid.Row="0"
+                        HorizontalAlignment="Left"
+                        KeyboardNavigation.TabNavigation="Local"/>
                     <Border
                         Grid.Row="0"
                         Height="1"
                         Background="#999999"
                         VerticalAlignment="Bottom"
-                        HorizontalAlignment="Stretch"
                         Margin="-20,0,-20,0"
-                        Panel.ZIndex="0"/>
-
-                    <ItemsPresenter
-                        Grid.Row="0"
-                        HorizontalAlignment="Left"
-                        KeyboardNavigation.TabNavigation="Local"
-                        Panel.ZIndex="1"/>
+                        IsHitTestVisible="False"/>
                     <ContentPresenter
                         Grid.Row="1"
                         Margin="0,0,0,0"
@@ -117,7 +82,15 @@
                 </Grid>
             </ControlTemplate>
         </TabControl.Template>
-        <TabItem Header="Singleplayer" Margin="0,0,-1,0">
+        
+        <TabItem Header="Singleplayer">
+            <TabItem.HeaderTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}"
+                       ToolTip="Singleplayer settings for campaign and custom mods"/>
+                </DataTemplate>
+            </TabItem.HeaderTemplate>
+            
             <Grid Background="#F2F2F2">
 
                 <Grid.RowDefinitions>
@@ -136,7 +109,7 @@
                 </Grid.RowDefinitions>
 
                 <!-- Profile -->
-                <Grid Grid.Row="0" Margin="0,15,0,8">
+                <Grid Grid.Row="0" Margin="0,20,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="80"/>
                         <ColumnDefinition Width="*"/>
@@ -160,20 +133,20 @@
 
                     <Button
                         x:Name="SaveProfileButton"
-                        Grid.Column="2"
-                        Width="38"
-                        Height="26"
-                        Margin="0,0,6,0"
-                        Padding="0"
-                        BorderBrush="#999999"
-                        ToolTip="Save current settings as a profile">
-                    <Image
-                        Source="Buttons/save_32x32.png"
-                        Width="16.5"
-                        Height="16.5"
-                        Stretch="Uniform"/>
+                            Grid.Column="2"
+                            Width="38"
+                            Height="26"
+                            Margin="0,0,6,0"
+                            Padding="0"
+                            BorderBrush="#999999"
+                            ToolTip="Save current settings as a profile">
+                        <Image
+                            Source="Buttons/save_32x32.png"
+                            Width="16.5"
+                            Height="16.5"
+                            Stretch="Uniform"/>
                     </Button>
-                    
+
                     <Button
                         x:Name="DeleteProfileButton"
                         Grid.Column="3"
@@ -216,8 +189,8 @@
                         BorderBrush="#999999"
                         ToolTip="Browse Quake folder"
                         Click="BrowseButton_Click">
-                    <Image
-                        Source="Buttons/browse_folder_32x32.png"
+                        <Image
+                        Source="Buttons/search_32x32.png"
                         Width="18.5"
                         Height="18.5"
                         Stretch="Uniform"/>
@@ -658,7 +631,7 @@
                                 BorderBrush="#999999"
                                 ToolTip="Clear extra arguments"
                                 Click="ClearExtraArgumentsButton_Click">
-                                
+
                                 <!-- Clear button is red if active -->
                                 <Button.Style>
                                     <Style TargetType="Button">
@@ -740,7 +713,7 @@
                         VerticalAlignment="Center"/>
                     <TextBlock
                         Grid.Column="1"
-                        Text="v1.3"
+                        Text="v1.4"
                         Foreground="#B0B0B0"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"/>
@@ -748,9 +721,13 @@
             </Grid>
 
         </TabItem>
-
-        <TabItem 
-            Header="Multiplayer" Margin="0.5,0,0,0">
+            <TabItem Header="Multiplayer">
+                <TabItem.HeaderTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}"
+                            ToolTip="Multiplayer settings for online play and custom maps"/>
+                    </DataTemplate>
+                </TabItem.HeaderTemplate>
             <local:MainWindowMultiplayer />
         </TabItem>
 

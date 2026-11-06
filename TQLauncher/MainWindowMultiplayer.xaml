@@ -21,7 +21,7 @@
         </Grid.RowDefinitions>
 
         <!-- Profile -->
-        <Grid Grid.Row="0" Margin="0,15,0,8">
+        <Grid Grid.Row="0" Margin="0,20,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
                 <ColumnDefinition Width="*"/>
@@ -102,7 +102,7 @@
                     ToolTip="Browse Quake folder"
                     Click="Multiplayer_BrowseButton_Click">
                 <Image
-                    Source="Buttons/search_folder_32x32.png"
+                    Source="Buttons/search_32x32.png"
                     Width="18.5"
                     Height="18.5"
                     Stretch="Uniform"/>
@@ -435,7 +435,7 @@
 
                 <!-- Multiplayer settings drop-down -->
                 <ComboBoxItem 
-                    Content="Kill limit"
+                    Content="Murder limit"
                     ToolTip="Activates the maximum number of kills for the match"/>
                 <ComboBoxItem
                     Content="Flag limit"
@@ -615,7 +615,7 @@
                 VerticalAlignment="Center"/>
             <TextBlock
                 Grid.Column="1"
-                Text="v1.3"
+                Text="v1.4"
                 Foreground="#B0B0B0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"/>
