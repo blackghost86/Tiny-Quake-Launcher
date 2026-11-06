@@ -63,21 +63,45 @@ Changelog
 --------------------------------------------------------------------------
 Version history from the latest to the oldest version released.
 
+1.4
+---
+New features:
+- Reworked the design of the singleplayer and multiplayer tabs.
+
+Bug fixes:
+- Fixed missing warning for saving a duplicate profile in multiplayer.
+- Fixed icon not being displayed for browse folder in multiplayer.
+- Renamed kill limit variable (multiplayer) to murder limit.
+
+Improvements:
+- Added custom color (dark gray) for random difficulty.
+- Renamed delete profile message and bottom text.
+- Renamed save and load profile bottom text.
+
+Tooltips:
+- Added tooltips for both singleplayer and multiplayer titles.
+- Added more details in tooltip for command line arguments.
+
+Code cleanup:
+- Moved Profile.cs file from Profiles to Models folder.
+- Renamed browse folder icon to search_32x32.png.
+- Cleaned MainWindowMultiplayer.xaml.cs file.
+
 1.3
 ---
 New features:
 - Added support for QuakeWorld demo recordings (.qwd and .mvd files).
+- Added random option to mode selection (for multiplayer only).
 - Added support for the latest Quake Enhanced - GOG Edition.
 - Added support for Gladiator Bot Restored (Quake 2).
 
 Bug fixes:
-- Switched Save and Cancel buttons in Save profile message.
+- Fixed Save and Cancel buttons in Save profile message.
 - Fixed alignment for every title and drop-down item.
 - Fixed blank profile selection by adding none.
 
 Improvements:
 - Added warning when deleting a profile, but no profile is selected.
-- Added random option to mode selection (for multiplayer only).
 - Renamed save/delete profile message title for both modes.
 - Renamed bottom text when enabling multiplayer settings.
 - Renamed bottom text for clear variable selection.
