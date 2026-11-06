@@ -369,3 +369,7 @@ Code cleanup:
 - Added support for Arcane Dimensions, Honey and Capture the Flag.
 - Added support for the latest episode: Dawn of the Machine.
 - Fixed a few typos, error messages and color codes.
+
+0.1
+---
+- First internal release built for testing purposes only.
