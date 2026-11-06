@@ -1,5 +1,5 @@
 namespace TinyQuakeLauncher.Games;
-
+ 
 public enum QuakeGame
 {
     Quake1,
