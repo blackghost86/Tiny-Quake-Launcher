@@ -63,6 +63,24 @@ Changelog
 --------------------------------------------------------------------------
 Version history from the latest to the oldest version released.
 
+1.5
+---
+New features:
+- Command line args are copied to clipboard when triple click is used.
+- Reworked the design of the bottom status bar and version number.
+- Added a light gray line above the bottom status bar.
+
+Bug fixes:
+- Added warning if a shortcut with the same name already exists.
+
+Improvements:
+- Added bottom text for command line args when triple click is used.
+- Added tooltip for Launch Quake button (quality of life fix).
+- Renamed error when desktop shortcut cannot be created.
+- Renamed information for desktop shortcut creation.
+- Renamed bottom text for no variable selected.
+- Renamed desktop shortcut tooltip.
+
 1.4
 ---
 New features:
@@ -83,7 +101,7 @@ Tooltips:
 - Added more details in tooltip for command line arguments.
 
 Code cleanup:
-- Moved Profile.cs file from Profiles to Models folder.
+- Moved Profile.cs in the same folder with other models.
 - Renamed browse folder icon to search_32x32.png.
 - Cleaned MainWindowMultiplayer.xaml.cs file.
 
