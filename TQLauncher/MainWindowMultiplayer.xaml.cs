@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using TinyQuakeLauncher.Data;
 using TinyQuakeLauncher.Games;
@@ -1061,7 +1062,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
         StatusTextMultiplayer.Text =
             limitName == "None"
-                ? "No limit selected."
+                ? "No variable selected."
                 : $"{limitName} selected.";
 
         ClearLimitSettingButtonMultiplayer.IsEnabled =
@@ -3231,6 +3232,27 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         UpdateCommandArguments();
     }
 
+    private void CommandArgumentsTextBoxMultiplayer_PreviewMouseLeftButtonDown(
+    object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 3)
+        {
+            TextRange textRange = new TextRange(
+                CommandArgumentsTextBoxMultiplayer.Document.ContentStart,
+                CommandArgumentsTextBoxMultiplayer.Document.ContentEnd);
+
+            string text = textRange.Text.TrimEnd('\r', '\n');
+
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                System.Windows.Clipboard.SetText(text);
+
+                // Display a status message after triple click was used in commnad line args.
+                StatusTextMultiplayer.Text = "Command line arguments copied to clipboard.";
+            }
+        }
+    }
+
     private void CloseAfterLaunchCheckBox_Click(
         object sender,
         RoutedEventArgs e)
@@ -3395,6 +3417,22 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                     desktopPath,
                     shortcutName);
 
+            // Check whether a shortcut with the same name already exists.
+            if (File.Exists(shortcutPath))
+            {
+                MessageBoxResult result =
+                    System.Windows.MessageBox.Show(
+                        $"Shortcut already exists. Do you want to overwrite it?",
+                        "Warning",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning);
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+            }
+
             Type? shellType =
                 Type.GetTypeFromProgID("WScript.Shell");
 
@@ -3433,7 +3471,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 "Desktop shortcut created successfully.";
 
             System.Windows.MessageBox.Show(
-                "Desktop shortcut created successfully.",
+                "Desktop shortcut created with selected arguments.",
                 "Information",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -3444,9 +3482,9 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 "Could not create desktop shortcut.";
 
             System.Windows.MessageBox.Show(
-                "Tiny Quake Launcher could not create the desktop shortcut.\n\n" +
+                "Desktop shortcut could not be created.\n\n" +
                 $"Error:\n{ex.Message}",
-                "Tiny Quake Launcher",
+                "Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }

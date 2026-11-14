@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Documents;
 using System.Windows.Media;
 using TinyQuakeLauncher.Data;
@@ -3463,6 +3464,27 @@ public partial class MainWindow : Window
         return null;
     }
 
+    private void CommandArgumentsTextBox_PreviewMouseLeftButtonDown(
+        object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 3)
+        {
+            TextRange textRange = new TextRange(
+                CommandArgumentsTextBox.Document.ContentStart,
+                CommandArgumentsTextBox.Document.ContentEnd);
+
+            string text = textRange.Text.TrimEnd('\r', '\n');
+
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                System.Windows.Clipboard.SetText(text);
+
+                // Display a status message after triple click was used in commnad line args.
+                StatusText.Text = "Command line arguments copied to clipboard.";
+            }
+        }
+    }
+
     private void CloseAfterLaunchCheckBox_Click(
         object sender,
         RoutedEventArgs e)
@@ -3657,6 +3679,22 @@ public partial class MainWindow : Window
                     desktopPath,
                     shortcutName);
 
+            // Check whether a shortcut with the same name already exists.
+            if (File.Exists(shortcutPath))
+            {
+                MessageBoxResult result =
+                    System.Windows.MessageBox.Show(
+                        $"Shortcut already exists. Do you want to overwrite it?",
+                        "Warning",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning);
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+            }
+
             Type? shellType =
                 Type.GetTypeFromProgID("WScript.Shell");
 
@@ -3695,7 +3733,7 @@ public partial class MainWindow : Window
                 "Desktop shortcut created successfully.";
 
             System.Windows.MessageBox.Show(
-                "Desktop shortcut created successfully.",
+                "Desktop shortcut created with selected arguments.",
                 "Information",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -3706,9 +3744,9 @@ public partial class MainWindow : Window
                 "Could not create desktop shortcut.";
 
             System.Windows.MessageBox.Show(
-                "Tiny Quake Launcher could not create the desktop shortcut.\n\n" +
+                "Desktop shortcut could not be created.\n\n" +
                 $"Error:\n{ex.Message}",
-                "Tiny Quake Launcher",
+                "Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4897,4 +4935,4 @@ public partial class MainWindow : Window
                 MessageBoxImage.Error);
         }
     }
-} 
+}
