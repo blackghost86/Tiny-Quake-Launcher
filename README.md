@@ -41,11 +41,15 @@ All games:
 - Random map at random difficulty (v1.1)
 - Custom profiles - done (v1.2)
 
+UI:
+- UI revamp for main window and its tabs - done (v1.4)
+- Revised bottom texts and added status - done (1.6)
+
 Other:
 - Engine identification overhaul - done (v0.9.4)
 - Shared folder support for all games - done (v0.9.5)
 - Parent folder support - done (v0.9.7)
-- UI polish (singleplayer/multiplayer) - done (v1.3)
+
 - Support for other games - not planned yet
 - Linux version - not planned yet
 
