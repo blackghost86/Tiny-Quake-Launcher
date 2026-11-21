@@ -41,7 +41,11 @@ All games:
 - Proper demo support - done (v1.0)
 - Random map at random difficulty (v1.1)
 - Custom profiles - done (v1.2)
-- UI polish - done (v1.3)
+
+UI:
+- UI revamp for main window and its tabs - done (v1.4)
+- Revised footer and added status text - done (v1.5)
+- Revised some bottom messages - done (v1.6)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
@@ -63,6 +67,30 @@ Changelog
 --------------------------------------------------------------------------
 Version history from the latest to the oldest version released.
 
+1.6
+---
+New features:
+- Multiplayer tab can be enabled/disabled with triple click.
+- Added bottom status text when tab is enabled/disabled.
+- Added warning if multiple instances are started.
+- Added status text for loading and ready.
+
+Bug fixes:
+- Multiplayer tab is remembered when launcher is restarted.
+- Clear button is now available if extra args are saved.
+- Fixed multiplayer tooltip if launcher is restarted.
+- Fixed difficulty if map is set to none.
+- Fixed mode if map is set to none.
+
+Improvements:
+- When multiplayer tab is disabled, a new tooltip is displayed.
+- Added warning when no engine and typing extra args.
+
+UI:
+- Added a vertical line before status text.
+- Renamed game folder title to folder.
+- Moved version number on top.
+
 1.5
 ---
 New features:
@@ -76,6 +104,8 @@ Bug fixes:
 Improvements:
 - Added bottom text for command line args when triple click is used.
 - Added tooltip for Launch Quake button (quality of life fix).
+
+UI:
 - Renamed error when desktop shortcut cannot be created.
 - Renamed information for desktop shortcut creation.
 - Renamed bottom text for no variable selected.
