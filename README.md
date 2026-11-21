@@ -43,8 +43,8 @@ All games:
 
 UI:
 - UI revamp for main window and its tabs - done (v1.4)
-- Revised footer and added status text - done (1.5)
-- Revised some bottom messages - done (1.6)
+- Revised footer and added status text - done (v1.5)
+- Revised some bottom messages - done (v1.6)
 
 Other:
 - Engine identification overhaul - done (v0.9.4)
