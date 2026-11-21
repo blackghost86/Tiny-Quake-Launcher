@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -108,6 +109,8 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
     private bool loadingProfiles;
 
+    private int activeLoadingOperations;
+
     private readonly LauncherProfile noProfilePlaceholder =
         new() { Name = "None" };
 
@@ -197,9 +200,43 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
 
         LoadProfiles();
 
-        LoadSavedQuakeFolder();
+        Loaded += MainWindowMultiplayer_Loaded;
+    }
 
-        UpdateCommandArguments();
+    private async void MainWindowMultiplayer_Loaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= MainWindowMultiplayer_Loaded;
+        await RunWithLoadingStatusAsync(() =>
+        {
+            LoadSavedQuakeFolder();
+            UpdateCommandArguments();
+        });
+    }
+
+    private async Task RunWithLoadingStatusAsync(Action operation)
+    {
+        if (activeLoadingOperations > 0)
+        {
+            operation();
+            return;
+        }
+
+        activeLoadingOperations++;
+        LoadingStatusTextMultiplayer.Text = "Loading";
+        try
+        {
+            await Task.Delay(50);
+            operation();
+        }
+        finally
+        {
+            activeLoadingOperations--;
+            if (activeLoadingOperations <= 0)
+            {
+                activeLoadingOperations = 0;
+                LoadingStatusTextMultiplayer.Text = "Ready";
+            }
+        }
     }
 
     private void LoadProfiles()
@@ -226,7 +263,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         }
     }
 
-    private void ProfileComboBoxMultiplayer_SelectionChanged(
+    private async void ProfileComboBoxMultiplayer_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
     {
@@ -237,7 +274,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
             return;
         }
 
-        ApplyProfile(profile);
+        await RunWithLoadingStatusAsync(() => ApplyProfile(profile));
     }
 
     private void SaveProfileButtonMultiplayer_Click(
@@ -1109,7 +1146,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         SaveCurrentSettings();
     }
 
-    private void Multiplayer_BrowseButton_Click(object sender, RoutedEventArgs e)
+    private async void Multiplayer_BrowseButton_Click(object sender, RoutedEventArgs e)
     {
         using System.Windows.Forms.FolderBrowserDialog dialog =
             new System.Windows.Forms.FolderBrowserDialog();
@@ -1132,24 +1169,27 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 return;
             }
 
-            QuakeFolderTextBoxMultiplayer.Text =
-                selectedFolder;
-
-            lastAcceptedQuakeFolder =
-                selectedFolder;
-
-            SaveQuakeFolder(
-                selectedFolder);
-
-            DetectQuakeInstallation(
-                selectedFolder);
-
-            if (ModeComboBoxMultiplayer.Items.Count > 2)
+            await RunWithLoadingStatusAsync(() =>
             {
-                ModeComboBoxMultiplayer.SelectedIndex = 2;
-            }
+                QuakeFolderTextBoxMultiplayer.Text =
+                    selectedFolder;
 
-            UpdateModeControlsState();
+                lastAcceptedQuakeFolder =
+                    selectedFolder;
+
+                SaveQuakeFolder(
+                    selectedFolder);
+
+                DetectQuakeInstallation(
+                    selectedFolder);
+
+                if (ModeComboBoxMultiplayer.Items.Count > 2)
+                {
+                    ModeComboBoxMultiplayer.SelectedIndex = 2;
+                }
+
+                UpdateModeControlsState();
+            });
         }
     }
 
@@ -1160,14 +1200,14 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         UpdateQuakeFolderToolTip();
     }
 
-    private void QuakeFolderTextBox_KeyDown(
+    private async void QuakeFolderTextBox_KeyDown(
         object sender,
         System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == System.Windows.Input.Key.Enter ||
             e.Key == System.Windows.Input.Key.Return)
         {
-            RefreshQuakeFolderFromTextBox();
+            await RunWithLoadingStatusAsync(() => RefreshQuakeFolderFromTextBox());
             e.Handled = true;
         }
     }
@@ -2509,6 +2549,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         }
 
         // Show maps containing dm, ctf, tourney or team.
+        // Ignore the rest / singleplayer maps.
         maps = maps
             .Where(
                 map =>
@@ -2616,11 +2657,16 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         Engine? selectedEngine =
             EngineComboBoxMultiplayer.SelectedItem as Engine;
 
+        bool noMapSelected =
+            MapComboBoxMultiplayer.SelectedIndex == 0 &&
+            MapComboBoxMultiplayer.SelectedItem is MapInfo;
+
         bool modeAvailable =
             selectedEngine != null &&
             (selectedEngine.Game == QuakeGame.Quake1 ||
              selectedEngine.Game == QuakeGame.Quake2 ||
-             selectedEngine.Game == QuakeGame.Quake3);
+             selectedEngine.Game == QuakeGame.Quake3) &&
+            !noMapSelected;
 
         ModeComboBoxMultiplayer.IsEnabled =
             modeAvailable;
@@ -2634,7 +2680,6 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                 ? System.Windows.SystemColors.ControlTextBrush
                 : System.Windows.Media.Brushes.DarkGray;
     }
-
 
     private static string CapitalizeFirstLetter(
     string? value)
@@ -2870,7 +2915,15 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
                    StringComparison.OrdinalIgnoreCase);
     }
 
-    private void RefreshEnginesButton_Click(
+    private async void RefreshEnginesButton_Click(object sender, RoutedEventArgs e)
+    {
+        await RunWithLoadingStatusAsync(() =>
+        {
+            RefreshEnginesButton_ClickCore(sender, e);
+        });
+    }
+
+    private void RefreshEnginesButton_ClickCore(
         object sender,
         RoutedEventArgs e)
     {
@@ -2943,7 +2996,15 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         }
     }
 
-    private void RefreshEpisodesButton_Click(
+    private async void RefreshEpisodesButton_Click(object sender, RoutedEventArgs e)
+    {
+        await RunWithLoadingStatusAsync(() =>
+        {
+            RefreshEpisodesButton_ClickCore(sender, e);
+        });
+    }
+
+    private void RefreshEpisodesButton_ClickCore(
         object sender,
         RoutedEventArgs e)
     {
@@ -3001,7 +3062,15 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         }
     }
 
-    private void Multiplayer_EngineComboBox_SelectionChanged(
+    private async void Multiplayer_EngineComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        await RunWithLoadingStatusAsync(() =>
+        {
+            Multiplayer_EngineComboBox_SelectionChangedCore(sender, e);
+        });
+    }
+
+    private void Multiplayer_EngineComboBox_SelectionChangedCore(
         object sender,
         SelectionChangedEventArgs e)
     {
@@ -3026,7 +3095,15 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         UpdateModeControlsState();
     }
 
-    private void Multiplayer_MissionComboBox_SelectionChanged(
+    private async void Multiplayer_MissionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        await RunWithLoadingStatusAsync(() =>
+        {
+            Multiplayer_MissionComboBox_SelectionChangedCore(sender, e);
+        });
+    }
+
+    private void Multiplayer_MissionComboBox_SelectionChangedCore(
         object sender,
         SelectionChangedEventArgs e)
     {
@@ -3078,6 +3155,7 @@ public partial class MainWindowMultiplayer : System.Windows.Controls.UserControl
         ClearMapButtonMultiplayer.IsEnabled =
             MapComboBoxMultiplayer.SelectedIndex > 0;
 
+        UpdateModeControlsState();
         UpdateCommandArguments();
     }
 

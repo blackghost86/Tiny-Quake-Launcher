@@ -2,11 +2,13 @@
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using TinyQuakeLauncher.Data;
 using TinyQuakeLauncher.Games;
@@ -45,6 +47,8 @@ public class LauncherSettings
     public bool CloseAfterLaunch { get; set; }
 
     public string ExtraArguments { get; set; } = "";
+
+    public bool MultiplayerDisabled { get; set; }
 }
 
 public sealed class MapInfoDisplayConverter : System.Windows.Data.IValueConverter
@@ -137,14 +141,21 @@ public partial class MainWindow : Window
 
     private bool commandArgumentsEdited;
 
+    private bool noEngineArgumentsWarningShown;
+
     private string lastAcceptedQuakeFolder = "";
 
     private bool suppressNoEpisodeWarning;
+
+    private bool multiplayerDisabled;
 
     private readonly ProfileStore profiles =
         ProfileStore.Load("TQLauncherTab1Profiles.json");
 
     private bool loadingProfiles;
+
+    private int activeLoadingOperations;
+    private bool detectingMissionPacks;
 
     private readonly LauncherProfile noProfilePlaceholder =
         new() { Name = "None" };
@@ -152,6 +163,21 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        multiplayerDisabled = LoadSettings().MultiplayerDisabled;
+        MultiplayerTab.Foreground = multiplayerDisabled
+            ? System.Windows.Media.Brushes.DarkGray
+            : System.Windows.Media.Brushes.Black;
+        MultiplayerTab.ToolTip = multiplayerDisabled
+            ? "Multiplayer tab can be enabled with triple click"
+            : "Multiplayer settings for online play and custom maps";
+
+        if (multiplayerDisabled)
+        {
+            StatusText.Text = "Disabled multiplayer tab and its features.";
+        }
+
+        MainTabControl.SelectionChanged += MainTabControl_SelectionChanged;
 
         ProfileComboBox.DisplayMemberPath =
             nameof(LauncherProfile.Name);
@@ -244,9 +270,114 @@ public partial class MainWindow : Window
         RefreshEnginesButton.IsEnabled = false;
         RefreshEpisodesButton.IsEnabled = false;
 
+        // Populate and restore the saved selectors before window is rendered.
         LoadSavedQuakeFolder();
-
         UpdateCommandArguments();
+    }
+
+    private async Task RunWithLoadingStatusAsync(Action operation)
+    {
+        activeLoadingOperations++;
+        LoadingStatusText.Text = "Loading";
+
+        try
+        {
+            // Give WPF time to paint the status before synchronous
+            // folder, episode, map or demo detection begins.
+            await Task.Delay(50);
+
+            operation();
+        }
+        finally
+        {
+            activeLoadingOperations--;
+
+            if (activeLoadingOperations <= 0)
+            {
+                activeLoadingOperations = 0;
+                LoadingStatusText.Text = "Ready";
+            }
+        }
+    }
+
+    private void MultiplayerHeader_MouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 3)
+        {
+            multiplayerDisabled = !multiplayerDisabled;
+
+            LauncherSettings settings = LoadSettings();
+            settings.MultiplayerDisabled = multiplayerDisabled;
+            SaveSettings(settings);
+
+            MultiplayerTab.Foreground = multiplayerDisabled
+                ? System.Windows.Media.Brushes.DarkGray
+                : System.Windows.Media.Brushes.Black;
+            MultiplayerTab.ToolTip = multiplayerDisabled
+                ? "Multiplayer tab can be enabled with triple click"
+                : "Multiplayer settings for online play and custom maps";
+
+            // Show the disabled state on the Singleplayer status text which
+            // remains visible when the Multiplayer tab is unavailable.
+            if (multiplayerDisabled)
+            {
+                StatusText.Text = "Disabled multiplayer tab and its features.";
+            }
+            else
+            {
+                StatusText.Text = "Enabled multiplayer tab and its features.";
+                SetMultiplayerStatusText("Enabled multiplayer tab and its features.");
+            }
+
+            // Keep the title clickable while locked, but prevent opening the tab.
+            if (sender is TextBlock headerText)
+            {
+                headerText.Foreground = multiplayerDisabled
+                    ? System.Windows.Media.Brushes.DarkGray
+                    : System.Windows.Media.Brushes.Black;
+
+                headerText.ToolTip = multiplayerDisabled
+                    ? "Multiplayer tab can be enabled with triple click"
+                    : "Multiplayer settings for online play and custom maps";
+            }
+
+            if (multiplayerDisabled)
+            {
+                if (ReferenceEquals(MainTabControl.SelectedItem, MultiplayerTab))
+                {
+                    MainTabControl.SelectedItem = SingleplayerTab;
+                }
+            }
+            else
+            {
+                MainTabControl.SelectedItem = MultiplayerTab;
+            }
+
+            e.Handled = true;
+        }
+    }
+
+    private void SetMultiplayerStatusText(string text)
+    {
+        if (MultiplayerTab.Content is FrameworkElement multiplayerContent &&
+            multiplayerContent.FindName("StatusTextMultiplayer") is TextBlock statusText)
+        {
+            statusText.Text = text;
+        }
+    }
+
+    private void MainTabControl_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        if (ReferenceEquals(e.Source, MainTabControl) &&
+            multiplayerDisabled &&
+            ReferenceEquals(MainTabControl.SelectedItem, MultiplayerTab))
+        {
+            MainTabControl.SelectedItem = SingleplayerTab;
+        }
     }
 
     private void LoadSavedQuakeFolder()
@@ -308,7 +439,6 @@ public partial class MainWindow : Window
                 ClearMapButton.IsEnabled = false;
                 ClearDifficultyButton.IsEnabled = false;
                 ClearDemoButton.IsEnabled = false;
-                ClearExtraArgumentsButton.IsEnabled = false;
             }
 
             CloseAfterLaunchCheckBox.IsChecked =
@@ -402,6 +532,9 @@ public partial class MainWindow : Window
 
             settings.QuakeFolder =
                 QuakeFolderTextBox.Text.Trim();
+
+            settings.MultiplayerDisabled =
+                multiplayerDisabled;
 
             Resolution? selectedResolution =
                 ResolutionComboBox.SelectedItem as Resolution;
@@ -612,6 +745,10 @@ public partial class MainWindow : Window
         ExtraArgumentsTextBox.Text =
             settings.ExtraArguments ?? "";
 
+        ClearExtraArgumentsButton.IsEnabled =
+            !string.IsNullOrWhiteSpace(
+                ExtraArgumentsTextBox.Text);
+
         UpdateCommandArguments();
     }
 
@@ -639,7 +776,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ProfileComboBox_SelectionChanged(
+    private async void ProfileComboBox_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
     {
@@ -651,7 +788,8 @@ public partial class MainWindow : Window
         if (ProfileComboBox.SelectedItem is LauncherProfile profile &&
             !ReferenceEquals(profile, noProfilePlaceholder))
         {
-            ApplyProfile(profile);
+            await RunWithLoadingStatusAsync(() =>
+                ApplyProfile(profile));
         }
     }
 
@@ -1085,7 +1223,7 @@ public partial class MainWindow : Window
         SaveCurrentSettings();
     }
 
-    private void BrowseButton_Click(object sender, RoutedEventArgs e)
+    private async void BrowseButton_Click(object sender, RoutedEventArgs e)
     {
         using System.Windows.Forms.FolderBrowserDialog dialog =
             new System.Windows.Forms.FolderBrowserDialog();
@@ -1117,16 +1255,18 @@ public partial class MainWindow : Window
             SaveQuakeFolder(
                 selectedFolder);
 
-            DetectQuakeInstallation(
-                selectedFolder);
-
-            // Default difficulty is always set to Normal.
-            if (DifficultyComboBox.Items.Count > 1)
+            await RunWithLoadingStatusAsync(() =>
             {
-                DifficultyComboBox.SelectedIndex = 3;
-            }
+                DetectQuakeInstallation(selectedFolder);
 
-            UpdateDifficultyControlsState();
+                // Default difficulty is always set to Normal.
+                if (DifficultyComboBox.Items.Count > 1)
+                {
+                    DifficultyComboBox.SelectedIndex = 3;
+                }
+
+                UpdateDifficultyControlsState();
+            });
         }
     }
 
@@ -1149,7 +1289,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RefreshQuakeFolderFromTextBox()
+    private async void RefreshQuakeFolderFromTextBox()
     {
         string folder = QuakeFolderTextBox.Text.Trim();
 
@@ -1177,12 +1317,15 @@ public partial class MainWindow : Window
         QuakeFolderTextBox.Text = folder;
         lastAcceptedQuakeFolder = folder;
         SaveQuakeFolder(folder);
-        DetectQuakeInstallation(folder);
-
-        if (DifficultyComboBox.Items.Count > 1)
+        await RunWithLoadingStatusAsync(() =>
         {
-            DifficultyComboBox.SelectedIndex = 3;
-        }
+            DetectQuakeInstallation(folder);
+
+            if (DifficultyComboBox.Items.Count > 1)
+            {
+                DifficultyComboBox.SelectedIndex = 3;
+            }
+        });
     }
 
     private void QuakeFolderTextBox_SizeChanged(
@@ -2166,8 +2309,8 @@ public partial class MainWindow : Window
         SetupDifficultyOptions();
         RefreshEpisodesButton.IsEnabled = true;
 
-        // Do not force a Demo foreground here. The Demo controls use the
-        // same normal WPF enabled/disabled styling as Map and Difficulty.
+        // Don't force a Demo foreground here. The Demo controls use the same
+        // normal WPF enabled/disabled styling as Map and Difficulty.
     }
 
     private void DetectMissionPacks(string quakeFolder)
@@ -2244,7 +2387,15 @@ public partial class MainWindow : Window
 
         if (MissionComboBox.Items.Count > 0)
         {
-            MissionComboBox.SelectedIndex = 0;
+            detectingMissionPacks = true;
+            try
+            {
+                MissionComboBox.SelectedIndex = 0;
+            }
+            finally
+            {
+                detectingMissionPacks = false;
+            }
 
             // An episode was detected, so restore the normal difficulty
             // options and use Normal difficulty as the default.
@@ -2605,9 +2756,14 @@ public partial class MainWindow : Window
         bool noEpisodes =
             MissionComboBox.Items.Count == 0;
 
+        bool noMapSelected =
+            MapComboBox.SelectedIndex == 0 &&
+            MapComboBox.SelectedItem is MapInfo;
+
         bool disabled =
             IsQuake3Game() ||
-            demoSelectionActive;
+            demoSelectionActive ||
+            noMapSelected;
 
         if (IsQuake3Game() &&
             DifficultyComboBox.SelectedIndex != 0)
@@ -2616,14 +2772,16 @@ public partial class MainWindow : Window
         }
 
         DifficultyComboBox.IsEnabled =
-            noEpisodes || !disabled;
+            !noMapSelected &&
+            (noEpisodes || !disabled);
         ClearDifficultyButton.IsEnabled =
+            !noMapSelected &&
             !noEpisodes &&
             !disabled &&
             DifficultyComboBox.SelectedIndex > 0;
 
         DifficultyLabel.Foreground =
-            disabled && !noEpisodes
+            (disabled && !noEpisodes) || noMapSelected
                 ? System.Windows.Media.Brushes.DarkGray
                 : System.Windows.SystemColors.ControlTextBrush;
     }
@@ -3086,7 +3244,7 @@ public partial class MainWindow : Window
                    StringComparison.OrdinalIgnoreCase);
     }
 
-    private void RefreshEnginesButton_Click(
+    private async void RefreshEnginesButton_Click(
         object sender,
         RoutedEventArgs e)
     {
@@ -3101,128 +3259,134 @@ public partial class MainWindow : Window
             return;
         }
 
-        Engine? currentEngine =
-            EngineComboBox.SelectedItem as Engine;
-
-        string currentEnginePath =
-            currentEngine?.ExecutablePath ?? "";
-
-        QuakeGame currentEngineGame =
-            currentEngine?.Game ?? QuakeGame.Quake1;
-
-        suppressNoEpisodeWarning = true;
-
-        try
+        await RunWithLoadingStatusAsync(() =>
         {
-            DetectEngines(quakeFolder);
-        }
-        finally
+            Engine? currentEngine =
+                EngineComboBox.SelectedItem as Engine;
+
+            string currentEnginePath =
+                currentEngine?.ExecutablePath ?? "";
+
+            QuakeGame currentEngineGame =
+                currentEngine?.Game ?? QuakeGame.Quake1;
+
+            suppressNoEpisodeWarning = true;
+
+            try
+            {
+                DetectEngines(quakeFolder);
+            }
+            finally
+            {
+                suppressNoEpisodeWarning = false;
+            }
+
+
+            Engine? refreshedEngine =
+                EngineComboBox.Items
+                    .OfType<Engine>()
+                    .FirstOrDefault(
+                        engine =>
+                            string.Equals(
+                                engine.ExecutablePath,
+                                currentEnginePath,
+                                StringComparison.OrdinalIgnoreCase) &&
+                            engine.Game == currentEngineGame);
+
+            if (refreshedEngine != null)
+            {
+                EngineComboBox.SelectedItem =
+                    refreshedEngine;
+
+                StatusText.Text =
+                    $"Found {EngineComboBox.Items.Count} engine(s).";
+            }
+            else if (EngineComboBox.Items.Count > 0)
+            {
+                StatusText.Text =
+                    $"Found {EngineComboBox.Items.Count} engine(s).";
+            }
+            else
+            {
+                StatusText.Text =
+                    "No engine(s) detected inside selected folder(s).";
+            }
+
+
+            // Refreshing engines can leave the same engine selected so the selection-changed
+            // event may not fire. Re-detect episodes explicitly so the episode refresh
+            // button and empty difficulty state stay in sync.
+            if (EngineComboBox.Items.Count > 0)
+            {
+                DetectMissionPacks(quakeFolder);
+                RefreshEpisodesButton.IsEnabled =
+                    MissionComboBox.Items.Count > 0;
+            }
+        });
+    }
+
+    private async void RefreshEpisodesButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        string quakeFolder =
+            QuakeFolderTextBox.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(quakeFolder) ||
+            !Directory.Exists(quakeFolder))
         {
-            suppressNoEpisodeWarning = false;
-        }
-
-
-        Engine? refreshedEngine =
-            EngineComboBox.Items
-                .OfType<Engine>()
-                .FirstOrDefault(
-                    engine =>
-                        string.Equals(
-                            engine.ExecutablePath,
-                            currentEnginePath,
-                            StringComparison.OrdinalIgnoreCase) &&
-                        engine.Game == currentEngineGame);
-
-        if (refreshedEngine != null)
-        {
-            EngineComboBox.SelectedItem =
-                refreshedEngine;
-
             StatusText.Text =
-                $"Found {EngineComboBox.Items.Count} engine(s).";
-        }
-        else if (EngineComboBox.Items.Count > 0)
-        {
-            StatusText.Text =
-                $"Found {EngineComboBox.Items.Count} engine(s).";
-        }
-        else
-        {
-            StatusText.Text =
-                "No engine(s) detected inside selected folder(s).";
+                "Select a valid Quake game folder first.";
+            return;
         }
 
-
-        // Refreshing engines can leave the same engine selected so the selection-changed
-        // event may not fire. Re-detect episodes explicitly so the episode refresh
-        // button and empty difficulty state stay in sync.
-        if (EngineComboBox.Items.Count > 0)
+        await RunWithLoadingStatusAsync(() =>
         {
+            MissionPack? currentMissionPack =
+                MissionComboBox.SelectedItem as MissionPack;
+
+            string currentMissionDirectory =
+                currentMissionPack?.GameDirectory ??
+                currentMissionPack?.DetectedDirectory ?? "";
+
             DetectMissionPacks(quakeFolder);
-            RefreshEpisodesButton.IsEnabled =
-                MissionComboBox.Items.Count > 0;
-        }
+
+            MissionPack? refreshedMissionPack =
+                MissionComboBox.Items
+                    .OfType<MissionPack>()
+                    .FirstOrDefault(
+                        missionPack =>
+                            string.Equals(
+                                missionPack.GameDirectory,
+                                currentMissionDirectory,
+                                StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(
+                                missionPack.DetectedDirectory,
+                                currentMissionDirectory,
+                                StringComparison.OrdinalIgnoreCase));
+
+            if (refreshedMissionPack != null)
+            {
+                MissionComboBox.SelectedItem =
+                    refreshedMissionPack;
+
+                StatusText.Text =
+                    $"Found {MissionComboBox.Items.Count} episode(s).";
+            }
+            else if (MissionComboBox.Items.Count > 0)
+            {
+                StatusText.Text =
+                    $"Found {MissionComboBox.Items.Count} episode(s).";
+            }
+            else
+            {
+                StatusText.Text =
+                    "No episode(s) detected inside selected folder(s).";
+            }
+        });
     }
 
-    private void RefreshEpisodesButton_Click(
-        object sender,
-        RoutedEventArgs e)
-    {
-        string quakeFolder =
-            QuakeFolderTextBox.Text.Trim();
-
-        if (string.IsNullOrWhiteSpace(quakeFolder) ||
-            !Directory.Exists(quakeFolder))
-        {
-            StatusText.Text =
-                "Select a valid Quake game folder first.";
-            return;
-        }
-
-        MissionPack? currentMissionPack =
-            MissionComboBox.SelectedItem as MissionPack;
-
-        string currentMissionDirectory =
-            currentMissionPack?.GameDirectory ??
-            currentMissionPack?.DetectedDirectory ?? "";
-
-        DetectMissionPacks(quakeFolder);
-
-        MissionPack? refreshedMissionPack =
-            MissionComboBox.Items
-                .OfType<MissionPack>()
-                .FirstOrDefault(
-                    missionPack =>
-                        string.Equals(
-                            missionPack.GameDirectory,
-                            currentMissionDirectory,
-                            StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(
-                            missionPack.DetectedDirectory,
-                            currentMissionDirectory,
-                            StringComparison.OrdinalIgnoreCase));
-
-        if (refreshedMissionPack != null)
-        {
-            MissionComboBox.SelectedItem =
-                refreshedMissionPack;
-
-            StatusText.Text =
-                $"Found {MissionComboBox.Items.Count} episode(s).";
-        }
-        else if (MissionComboBox.Items.Count > 0)
-        {
-            StatusText.Text =
-                $"Found {MissionComboBox.Items.Count} episode(s).";
-        }
-        else
-        {
-            StatusText.Text =
-                "No episode(s) detected inside selected folder(s).";
-        }
-    }
-
-    private void EngineComboBox_SelectionChanged(
+    private async void EngineComboBox_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
     {
@@ -3237,8 +3401,9 @@ public partial class MainWindow : Window
 
         if (!restoringSavedSelections)
         {
-            DetectMissionPacks(
-                QuakeFolderTextBox.Text.Trim());
+            await RunWithLoadingStatusAsync(() =>
+                DetectMissionPacks(
+                    QuakeFolderTextBox.Text.Trim()));
         }
         else
         {
@@ -3248,11 +3413,16 @@ public partial class MainWindow : Window
         UpdateDifficultyControlsState();
     }
 
-    private void MissionComboBox_SelectionChanged(
+    private async void MissionComboBox_SelectionChanged(
         object sender,
         SelectionChangedEventArgs e)
     {
         UpdateMissionToolTip();
+
+        if (detectingMissionPacks)
+        {
+            return;
+        }
 
         if (MissionComboBox.SelectedItem is not MissionPack)
         {
@@ -3274,17 +3444,40 @@ public partial class MainWindow : Window
             return;
         }
 
-        DetectMaps();
-        DetectDemos();
-
-        if (!restoreMapSelectionCleared &&
-            !restoreDifficultySelectionCleared &&
-            DifficultyComboBox.Items.Count > 3)
+        // During saved-selection restoration, the outer startup/profile
+        // operation already owns the Loading state. Keep this path
+        // synchronous so the saved map and difficulty can be restored
+        // immediately after the episode is selected.
+        if (restoringSavedSelections)
         {
-            DifficultyComboBox.SelectedIndex = 3;
+            DetectMaps();
+            DetectDemos();
+
+            if (!restoreMapSelectionCleared &&
+                !restoreDifficultySelectionCleared &&
+                DifficultyComboBox.Items.Count > 3)
+            {
+                DifficultyComboBox.SelectedIndex = 3;
+            }
+
+            UpdateDifficultyControlsState();
+            return;
         }
 
-        UpdateDifficultyControlsState();
+        await RunWithLoadingStatusAsync(() =>
+        {
+            DetectMaps();
+            DetectDemos();
+
+            if (!restoreMapSelectionCleared &&
+                !restoreDifficultySelectionCleared &&
+                DifficultyComboBox.Items.Count > 3)
+            {
+                DifficultyComboBox.SelectedIndex = 3;
+            }
+
+            UpdateDifficultyControlsState();
+        });
     }
 
     private void MapComboBox_SelectionChanged(
@@ -3303,6 +3496,7 @@ public partial class MainWindow : Window
             MapComboBox.SelectedIndex > 0;
 
         UpdateMapSelectionVisual();
+        UpdateDifficultyControlsState();
 
         UpdateCommandArguments();
     }
@@ -3496,9 +3690,33 @@ public partial class MainWindow : Window
         object sender,
         TextChangedEventArgs e)
     {
-        ClearExtraArgumentsButton.IsEnabled =
+        bool hasExtraArguments =
             !string.IsNullOrWhiteSpace(
                 ExtraArgumentsTextBox.Text);
+
+        ClearExtraArgumentsButton.IsEnabled =
+            hasExtraArguments;
+
+        if (!hasExtraArguments)
+        {
+            noEngineArgumentsWarningShown = false;
+        }
+        else if (EngineComboBox.SelectedItem is not Engine &&
+                 ExtraArgumentsTextBox.IsKeyboardFocusWithin &&
+                 !noEngineArgumentsWarningShown)
+        {
+            noEngineArgumentsWarningShown = true;
+
+            System.Windows.MessageBox.Show(
+                "Please select an engine for arguments to work.",
+                "Warning",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        else if (EngineComboBox.SelectedItem is Engine)
+        {
+            noEngineArgumentsWarningShown = false;
+        }
 
         UpdateCommandArguments();
     }

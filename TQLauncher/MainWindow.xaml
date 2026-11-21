@@ -9,7 +9,8 @@
         WindowStartupLocation="CenterScreen"
         Background="#F2F2F2">
 
-    <TabControl Margin="20,15,20,6"
+    <TabControl x:Name="MainTabControl"
+                Margin="20,15,20,6"
                 Background="#F2F2F2">
         <TabControl.Resources>
             <Style TargetType="{x:Type TabItem}">
@@ -68,6 +69,13 @@
                         Grid.Row="0"
                         HorizontalAlignment="Left"
                         KeyboardNavigation.TabNavigation="Local"/>
+                    <!-- Version number -->
+                    <TextBlock
+                        Grid.Row="0"
+                        Text="v1.6"
+                        Foreground="#B0B0B0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"/>
                     <Border
                         Grid.Row="0"
                         Height="1"
@@ -83,7 +91,8 @@
             </ControlTemplate>
         </TabControl.Template>
 
-        <TabItem Header="Singleplayer">
+        <!-- Singleplayer tab -->
+        <TabItem x:Name="SingleplayerTab" Header="Singleplayer">
             <TabItem.HeaderTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding}"
@@ -168,7 +177,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock
                         Grid.Column="0"
-                        Text="Game folder:"
+                        Text="Folder:"
                         Margin="0,-1,0,0"
                         VerticalAlignment="Center"/>
                     <TextBox
@@ -708,43 +717,62 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="55"/>
+                    </Grid.ColumnDefinitions>
 
                     <Border
                         Grid.Row="0"
+                        Grid.Column="0"
+                        Grid.ColumnSpan="3"
                         Height="1"
                         Background="#DEDEDE"
                         Margin="-20,0,-20,4"
                         IsHitTestVisible="False"/>
 
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        
-                        <TextBlock
-                            x:Name="StatusText"
-                            Grid.Column="0"
-                            Text="Select your Quake folder."
-                            VerticalAlignment="Center"/>
-                        
-                        <!-- Version number -->
-                        <TextBlock
-                            Grid.Column="1"
-                            Text="v1.5"
-                            Foreground="#B0B0B0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"/>
-                    </Grid>
+                    <TextBlock
+                        x:Name="StatusText"
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Text="Select your Quake folder."
+                        VerticalAlignment="Center"/>
+
+                    <!-- Vertical separator -->
+                    <Border
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        Grid.RowSpan="2"
+                        Width="1"
+                        Margin="0,0,20,-8"
+                        Background="#DEDEDE"
+                        VerticalAlignment="Stretch"
+                        IsHitTestVisible="False"/>
+
+                    <!-- Status text -->
+                    <TextBlock
+                        x:Name="LoadingStatusText"
+                        Grid.Row="1"
+                        Grid.Column="2"
+                        Text="Ready"
+                        Foreground="Black"
+                        HorizontalAlignment="Center"
+                        TextAlignment="Center"
+                        VerticalAlignment="Center"/>
                 </Grid>
             </Grid>
 
         </TabItem>
-        <TabItem Header="Multiplayer">
+
+        <!-- Multiplayer tab -->
+        <TabItem x:Name="MultiplayerTab" Header="Multiplayer">
             <TabItem.HeaderTemplate>
                 <DataTemplate>
-                    <TextBlock Text="{Binding}"
-                            ToolTip="Multiplayer settings for online play and custom maps"/>
+                    <TextBlock
+                            Text="{Binding}"
+                            ToolTip="{Binding ToolTip, RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}"
+                            MouseLeftButtonDown="MultiplayerHeader_MouseLeftButtonDown"/>
                 </DataTemplate>
             </TabItem.HeaderTemplate>
             <local:MainWindowMultiplayer />
