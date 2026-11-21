@@ -43,7 +43,7 @@ All games:
 
 UI:
 - UI revamp for main window and its tabs - done (v1.4)
-- Revised footer and added status text - done (v1.5)
+- Revised footer and added status text - done (v1.6)
 - Revised some bottom messages - done (v1.6)
 
 Other:
